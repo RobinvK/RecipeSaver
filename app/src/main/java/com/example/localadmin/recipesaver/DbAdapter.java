@@ -132,7 +132,7 @@ public class DbAdapter {
         return id;
     }
 
-    public int numberOfRecipes() {
+    public int getNumberOfRecipes() {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         Cursor cursor = db.rawQuery("SELECT " + DbHelper.RECIPE_UID + " FROM " + DbHelper.RECIPE_TABLE_NAME, null);
 

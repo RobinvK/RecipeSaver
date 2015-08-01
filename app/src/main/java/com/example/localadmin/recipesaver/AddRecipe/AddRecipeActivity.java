@@ -50,6 +50,8 @@ import java.util.Random;
  * V1.03 - 24-7-2015: implementation of Picasso
  * V1.02 - 23-7-2015: implementation of adding an image
  * V1.01 - 9-7-2015: implementation of onRestoreInstanceState & onSaveInstanceState to retain elements added to the Recyclerviews on orientation change
+
+ TODO: when entering an ingredient / a step with a long description the textview's height doesn't automatically adjust. it does when the screen rotates or blacks out.
  */
 public class AddRecipeActivity extends AppCompatActivity {
     DbAdapter dbHelper;
