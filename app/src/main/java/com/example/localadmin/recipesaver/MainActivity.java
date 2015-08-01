@@ -5,7 +5,7 @@ package com.example.localadmin.recipesaver;
  * Created on 22-6-2015.
  * Last changed on 15-7-2015
  * Current version: V 1.0
- * <p>
+ *
  * changes:
  *
  */
@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("RRROBIN", "--------------------------------------------START---------------------------------------");
+        Log.d("RRROBIN APP", "*+!-----------------------------------------START------------------------------------!+*");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
