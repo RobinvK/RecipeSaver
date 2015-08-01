@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">recipesaver</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_add_recipe">Add recipe</string>
+    <string name="title_activity_view_recipe_list">View recipe list</string>
+    <string name="drawer_open">Open</string>
+    <string name="drawer_close">Close</string>
+    <string name="drawer_header_default_welcome_text">Welcome!</string>
+    <string name="edit_text_recipe_title_hint">Recipe title</string>
+    <string name="edit_text_steps_hint">Add a Step</string>
+    <string name="button_add_recipe_text">Add Recipe</string>
+
+    <string name="hintTxtItem">Add an ingredient</string>
+    <string name="lblBtnAdd">Add Item</string>
+    <string name="txtEmpty">List is empty</string>
+    <string name="lblBtnAddStep">Add Step</string>
+    <string name="year">Year</string>
+    <string name="location">Location</string>
+</resources>
