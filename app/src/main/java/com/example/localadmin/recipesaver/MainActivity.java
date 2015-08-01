@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("RRROBIN APP", "*+!-----------------------------------------START------------------------------------!+*");
+        Log.d("RRROBIN APP", "*----------------------------------------START------------------------------------*");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
