@@ -1,5 +1,16 @@
 package com.example.localadmin.recipesaver;
 
+/**
+ * APP VERSION HISTORY
+ *
+ * Current version: V APP_1.00
+ *
+ * V APP_1.00 - 3-8-2015: first app version. Activities
+ * AddRecipeActivity: add a title, an image from camera or gallery, steps and ingredients to your ingredient and save it
+ * ViewRecipeListActivity: lists your recipes. Opens up a single recipe when one is selected from the recipe list.
+ *
+ */
+
 
 /**
  * Created on 22-6-2015.
