@@ -2,10 +2,12 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 1-8-2015
- * Current version: V 1.05
- * <p/>
+
+ * Last changed on 3-8-2015
+ * Current version: V 1.06
+ *
  * changes:
+ * V1.06 - 3-8-2015: back to Picasso 2.5.2 due to problems in AddRecipeActivity V1.06
  * V1.05 - 29-7-2015: Addition of recipesSelectionType. Automatically opens the newly created recipe if started from AddRecipe Activity
  * V1.04 - 28-7-2015: improved Picasso implementation
  * V1.03 - 24-7-2015: implementation of Picasso
@@ -200,7 +202,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             @Override
             public void onFoldingBack(UnfoldableView unfoldableView) {
                 if (recipesSelectionType == NEWEST_FROM_ADDRECIPE) {
-                    Log.d("RRROBIN APP", "ViewRecipeListActivity onFoldingBack, you came from AddRecipe but are now folding down the recipecard, therefore the recipesSelectionType should be changed");
+                    Log.d("RRROBIN APP", "ViewRecipeListActivity onFoldingBack, you came from AddRecipe but are now folding down the recipecard, therefore the recipesSelectionType will be changed to NEWEST");
                     recipesSelectionType = NEWEST;
                 }
                 mListTouchInterceptor.setClickable(true);
