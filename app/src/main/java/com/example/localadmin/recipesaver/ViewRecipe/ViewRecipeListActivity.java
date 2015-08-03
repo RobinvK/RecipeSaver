@@ -2,19 +2,24 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 29-7-2015
- * Current version: V 1.05
- * <p>
+
+ * Last changed on 3-8-2015
+ * Current version: V 1.06
+ *
  * changes:
+ * V1.06 - 3-8-2015: back to Picasso 2.5.2 due to problems in AddRecipeActivity V1.06
  * V1.05 - 29-7-2015: Addition of recipesSelectionType. Automatically opens the newly created recipe if started from AddRecipe Activity
  * V1.04 - 28-7-2015: improved Picasso implementation
- //TODO: is this the correct way of implementing Picasso? Now it seems that Picasso doesn't load the unfolded recipecardimage from memory, even if the folded recipecardimage is loaded in memory (and vice versa)
-  check futurestud.io/blog/picasso-getting-started-simple-loading/
- //picasso also reloads on screen rotation
-
  * V1.03 - 24-7-2015: implementation of Picasso
  * V1.02 - 23-7-2015: removal of unnecessary library
  * V1.01 - 9-7-2015: implementation of FoldableLayout for recipes, implementation of scrollview on viewing a single recipe.
+
+ * //TODO: is this the correct way of implementing Picasso? Now it seems that Picasso doesn't load the unfolded recipecardimage from memory, even if the folded recipecardimage is loaded in memory (and vice versa)
+ * check futurestud.io     /blog/picasso-getting-     started-simple-loading/
+ * //picasso also reloads on screen rotation
+ * TODO: test if the app crashes when adding the first recipe
+ * TODO: long titles do not fit in the closed recipe card title textview
+ * TODO: aestethics: youtube.com     /watch?v=     cT5fsfGFFq8 effect
  */
 
 import android.graphics.Bitmap;
@@ -37,8 +42,6 @@ import com.example.localadmin.recipesaver.ViewRecipe.FoldableItem.shading.Glance
 import com.example.localadmin.recipesaver.R;
 import com.squareup.picasso.Picasso;
 
-import org.json.JSONObject;
-
 import java.io.File;
 
 public class ViewRecipeListActivity extends AppCompatActivity {
@@ -57,6 +60,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
     public int recipesSelectionType = NEWEST;
     private int selectedRecipe;
+    private int numberOfRecipes;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,11 +78,25 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         }
 
         setUpRecyclerView();
-        createRecipeCards(); //Creates RecipeDataCard objects and stores them in mAdapter
-        setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
 
-        setFoldingListener(); //set listener for onUnfolding, onUnfolded, onFoldingBack and onFoldedBack for the full recipe view
-        setScrollViewListener();//Update full recipe view's FoldableItemLayout with ScrollView's Scroll-position
+        numberOfRecipes = dbHelper.getNumberOfRecipes();
+        Log.d("RRROBIN RECIPEDATA", "numberOfRecipes = " + numberOfRecipes);
+        if (numberOfRecipes == 0) {
+            //TODO: message "no recipes saved"
+            Log.d("RRROBIN RECIPEDATA", " message no recipes saved" );
+
+            mDetailsLayout = findViewById(R.id.recipe_opened);
+            mDetailsLayout.setVisibility(View.INVISIBLE);
+        }
+        else {
+            createRecipeCards(); //Creates RecipeDataCard objects and stores them in mAdapter
+            setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
+
+            setFoldingListener(); //set listener for onUnfolding, onUnfolded, onFoldingBack and onFoldedBack for the full recipe view
+            setScrollViewListener();//Update full recipe view's FoldableItemLayout with ScrollView's Scroll-position
+        }
+
+        Log.d("RRROBIN RECIPEDATA", "end of onCreate " );
     }
 
     private void setUpRecyclerView() {
@@ -92,24 +110,34 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         MyCardAdapter mAdapter = new MyCardAdapter(this);
         int[] recipeSelection;
 
-        if (recipesSelectionType == NEWEST_FROM_ADDRECIPE) {//TODO:make switch case if more options exist
-            recipeSelection = dbHelper.getLastRecipes(10); //Returns an array which holds the recipe ID's of the 10 recipes which were entered last
-            if (recipeSelection[recipeSelection.length - 1] != selectedRecipe) {
-              Log.d("RRROBIN ERROR", " newest recipe in database is not the newly added recipe!, selectedRecipe = " + selectedRecipe + ", recipeSelection[recipeSelection.length - 1] = " + recipeSelection[recipeSelection.length - 1]);
-                int tempHolderForNewestRecipe = recipeSelection[0];
-                for (int i = 0; i < recipeSelection.length - 2; i++) {
-                    if (recipeSelection[i+1] != selectedRecipe) {//safeguard for rare/non-existent occurrence when the newest added recipe was at any other position than recipeSelection[recipeSelection.length - 1]. if that is the case do not change recipeSelection[i] to recipeSelection[i+1], but to recipeSelection[0], which would have been discarded otherwise due to the nature of the for loop
-                        recipeSelection[i] = recipeSelection[i + 1];
-                    } else {
-                        recipeSelection[i] = tempHolderForNewestRecipe;
-                    }
+        switch (recipesSelectionType) {
+            case NEWEST_FROM_ADDRECIPE:
+                if (numberOfRecipes > 10) {
+                    numberOfRecipes = 10;
                 }
-                recipeSelection[recipeSelection.length - 1] = selectedRecipe;
-            }
-        } else {
-            //default:
-            recipeSelection = dbHelper.getLastRecipes(10); //Returns an array which holds the recipe ID's of the 10 recipes which were entered last
+                recipeSelection = dbHelper.getLastRecipes(numberOfRecipes); //Returns an array which holds the recipe ID's of the 10 recipes which were entered last
+                if (recipeSelection[recipeSelection.length - 1] != selectedRecipe) {
+                    Log.d("RRROBIN ERROR", " newest recipe in database is not the newly added recipe!, selectedRecipe = " + selectedRecipe + ", recipeSelection[recipeSelection.length - 1] = " + recipeSelection[recipeSelection.length - 1]);
+                    int tempHolderForNewestRecipe = recipeSelection[0];
+                    for (int i = 0; i < recipeSelection.length - 2; i++) {
+                        if (recipeSelection[i + 1] != selectedRecipe) {//safeguard for rare/non-existent occurrence when the newest added recipe was at any other position than recipeSelection[recipeSelection.length - 1]. if that is the case do not change recipeSelection[i] to recipeSelection[i+1], but to recipeSelection[0], which would have been discarded otherwise due to the nature of the for loop
+                            recipeSelection[i] = recipeSelection[i + 1];
+                        } else {
+                            recipeSelection[i] = tempHolderForNewestRecipe;
+                        }
+                    }
+                    recipeSelection[recipeSelection.length - 1] = selectedRecipe;
+                }
+                break;
+            case NEWEST:
+            default:
+                if (numberOfRecipes > 10) {
+                    numberOfRecipes = 10;
+                }
+                recipeSelection = dbHelper.getLastRecipes(numberOfRecipes); //Returns an array which holds the recipe ID's of the 10 recipes which were entered last
+                break;
         }
+
 
         //Create a RecipeDataCard object for each recipe ID in the recipeSelection array, fill the card with information and store it in mAdapter
         for (int i = 0; i < recipeSelection.length; i++) {
@@ -128,7 +156,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         mListTouchInterceptor = findViewById(R.id.touch_interceptor_view);
         mListTouchInterceptor.setClickable(false);
 
-        mDetailsLayout = findViewById(R.id.details_layout);
+        mDetailsLayout = findViewById(R.id.recipe_opened);
         mDetailsLayout.setVisibility(View.INVISIBLE);
         mUnfoldableView = (UnfoldableView) findViewById(R.id.unfoldable_view);
 
@@ -137,7 +165,6 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
         mDetailsScrollView = findViewById(R.id.recipe_detail_scroll_view);
     }
-
 
     //------------------EVENT LISTENERS----------------
 
@@ -175,7 +202,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             @Override
             public void onFoldingBack(UnfoldableView unfoldableView) {
                 if (recipesSelectionType == NEWEST_FROM_ADDRECIPE) {
-                    Log.d("RRROBIN APP", "ViewRecipeListActivity onFoldingBack, you came from AddRecipe but are now folding down the recipecard, therefore the recipesSelectionType should be changed");
+                    Log.d("RRROBIN APP", "ViewRecipeListActivity onFoldingBack, you came from AddRecipe but are now folding down the recipecard, therefore the recipesSelectionType will be changed to NEWEST");
                     recipesSelectionType = NEWEST;
                 }
                 mListTouchInterceptor.setClickable(true);
@@ -192,7 +219,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (recipesSelectionType!= NEWEST_FROM_ADDRECIPE && mUnfoldableView != null && (mUnfoldableView.isUnfolded() || mUnfoldableView.isUnfolding())) {
+        if (recipesSelectionType != NEWEST_FROM_ADDRECIPE && mUnfoldableView != null && (mUnfoldableView.isUnfolded() || mUnfoldableView.isUnfolding())) {
             mUnfoldableView.foldBack();
         } else {
             super.onBackPressed();

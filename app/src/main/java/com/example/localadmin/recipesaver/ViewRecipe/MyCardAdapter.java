@@ -1,7 +1,6 @@
 package com.example.localadmin.recipesaver.ViewRecipe;
 
 import android.content.Context;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -44,7 +43,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
     @Override
     public CardViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
         Log.d("RRROBIN APP", "MyCardAdapter onCreateViewHolder");
-        View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.recyclerview_recipe_card, viewGroup, false);
+        View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.recyclerview_recipe_card_closed, viewGroup, false);
 
         return new CardViewHolder(view);
     }
@@ -53,9 +52,11 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
     public void onBindViewHolder(CardViewHolder viewHolder, int i) {
         Log.d("RRROBIN APP", "MyCardAdapter onBindViewHolder + i = " + i);
         RecipeDataCard recipeDataCard = mItems.get(i);
+        Log.d("RRROBIN RECIPEDATA", "  1 viewHolder.title.getText() = " +  viewHolder.title.getText());
         viewHolder.title.setText(recipeDataCard.getName());
+        Log.d("RRROBIN RECIPEDATA", "  2 viewHolder.title.getText() = " + viewHolder.title.getText());
         viewHolder.ingredients.setText(recipeDataCard.getIngredients());
-        Log.d("RRROBIN RECIPEDATA", "  recipeDataCard.getImagePath()  " + recipeDataCard.getImagePath());
+        Log.d("RRROBIN RECIPEDATA", "  recipeDataCard.getImagePath() = " + recipeDataCard.getImagePath());
         viewHolder.imagePath = recipeDataCard.getImagePath();
         //viewHolder.image.setImageBitmap(BitmapFactory.decodeFile(recipeDataCard.getImagePath()));
         // Picasso.with(viewHolder.image.getContext()).setIndicatorsEnabled(true);

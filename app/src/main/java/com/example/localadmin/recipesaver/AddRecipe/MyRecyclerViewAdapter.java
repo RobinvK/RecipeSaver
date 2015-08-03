@@ -36,11 +36,11 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
     public IngredientViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view;
         if(dataType=="INGREDIENT") {
-            view = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerview_item_ingredient_add_recipe, parent, false);
+            view = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerview_item_ingredient, parent, false);
         }
         else{
 
-            view = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerview_item_step_add_recipe, parent, false);
+            view = LayoutInflater.from(parent.getContext()).inflate(R.layout.recyclerview_item_step, parent, false);
         }
 
         return new IngredientViewHolder(view);
