@@ -50,7 +50,6 @@
             android:id="@+id/button_image_add_recipe"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:onClick="addImage"
             android:text="add an image"
             android:layout_gravity="center_horizontal"
             android:padding="15dp"

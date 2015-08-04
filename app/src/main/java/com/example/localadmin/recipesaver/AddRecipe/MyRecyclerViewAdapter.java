@@ -1,6 +1,8 @@
 package com.example.localadmin.recipesaver.AddRecipe;
 
+import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,15 +10,19 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.localadmin.recipesaver.R;
+import com.example.localadmin.recipesaver.ViewRecipe.ViewRecipeListActivity;
+import com.squareup.picasso.Picasso;
 
+import java.io.File;
 import java.util.ArrayList;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 9-7-2015
- * Current version: V 1.01
+ * Last changed on 4-8-2015
+ * Current version: V 1.02
  *
  * changes:
+ * V1.02 - 4-8-2015: implementation of addImagePath(), addPictureIcon, picasso & stepImage to accommodate V1.07 changes to AddRecipeActivity. Steps can now display images
  * V1.01 - 9-7-2015: implementation of getDataSet to accommodate V1.01 changes to AddRecipeActivity
  *
  */
@@ -47,13 +53,69 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
     }
 
     @Override
-    public void onBindViewHolder(IngredientViewHolder holder, int position) {
+    public void onBindViewHolder(final IngredientViewHolder holder, int position) {
+        Log.d("RRROBIN RECIPEDATA", "  onBindViewHolder, mDataSet at position: " + position + " with text: " + mDataSet.get(position).getmText1());//TODO: why does this get called multiple times when an ingredient or a step is added?
         holder.dataTextView.setText(mDataSet.get(position).getmText1());
+
+        if(dataType=="STEP") {
+            if (!mDataSet.get(position).getImagePath().equals("N/A")) {
+                Log.d("RRROBIN RECIPEDATA", "  onBindViewHolder, mDataSet at position: " + position + " with text: " + mDataSet.get(position).getmText1() + " has the following path: " + mDataSet.get(position).getImagePath());
+
+                ImageView imageView = holder.stepImage;
+                ViewGroup.LayoutParams params = (ViewGroup.LayoutParams) imageView.getLayoutParams();
+                params.height = 100;
+                imageView.setLayoutParams(params);
+
+                final Picasso picasso = new Picasso.Builder(holder.stepImage.getContext()).listener(new Picasso.Listener() {
+                    @Override
+                    public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
+                        Log.d("RRROBIN ERROR", " onBindViewHolder Picasso printStackTrace");
+                        //TODO: implement fallback when error occurs, also for the .load function below
+                        exception.printStackTrace();
+                    }
+                }).build();
+
+                final File picassoFile = new File(mDataSet.get(position).getImagePath());
+                picasso.with(holder.stepImage.getContext())
+                        .setIndicatorsEnabled(true);
+                picasso.with(holder.stepImage.getContext())
+                        .load(picassoFile)
+                        .fit()
+                        .centerCrop()
+                        .into(holder.stepImage, new com.squareup.picasso.Callback() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d("RRROBIN RECIPEDATA", " onBindViewHolder Picasso onSuccess");
+                            }
+
+                            @Override
+                            public void onError() {
+                                Log.d("RRROBIN ERROR", " onBindViewHolder Picasso onerror");
+                                picasso.with(holder.stepImage.getContext()).load(picassoFile).into(holder.stepImage);//TODO: what if this errors!
+                            }
+                        });
+            } else {
+                holder.stepImage.setImageDrawable(null);
+                ImageView imageView = holder.stepImage;
+                ViewGroup.LayoutParams params = (ViewGroup.LayoutParams) imageView.getLayoutParams();
+                params.height = 0;
+                imageView.setLayoutParams(params);
+            }
+        }
+
     }
+
+    public void addImagePath(int index, String imagePath) {
+        mDataSet.get(index).setImagePath(imagePath);
+        Log.d("RRROBIN RECIPEDATA", "  addImagePath, mDataSet at index: " + index + " with text: " + mDataSet.get(index).getmText1() + " has the following path: " + imagePath);
+        notifyItemChanged(index);
+    }
+
 
     public void addItem(DataObject dataObj, int index) {
         mDataSet.add(index, dataObj);
-        notifyItemInserted(index);
+        // notifyItemInserted(index);
+        notifyDataSetChanged();
     }
     public ArrayList<DataObject> getDataSet() {
         return mDataSet;
@@ -78,24 +140,52 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
         return sb.toString();
     }
 
-
+    public String[] getData(){
+        String[] theData = new String[mDataSet.size()];
+        for(int i = 0; i <mDataSet.size();i++){
+            theData[i] =mDataSet.get(i).getmText1();
+        }
+        return theData;
+    }
+    public String[] getImagePaths(){
+        String[] theData = new String[mDataSet.size()];
+        for(int i = 0; i <mDataSet.size();i++){
+            theData[i] =mDataSet.get(i).getImagePath();
+        }
+        return theData;
+    }
 
     class IngredientViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         TextView dataTextView;
-        ImageView icon;
+        ImageView deleteIcon;
+        ImageView addPictureIcon;
+        ImageView stepImage;
 
 
         public IngredientViewHolder(View itemView) {
             super(itemView);
-            dataTextView = (TextView) itemView.findViewById(R.id.textView1);
-            icon = (ImageView) itemView.findViewById(R.id.listIcon);
-            icon.setOnClickListener(this);
+            dataTextView = (TextView) itemView.findViewById(R.id.recyclerview_text);
+            deleteIcon = (ImageView) itemView.findViewById(R.id.delete_icon);
+            if(dataType=="STEP") {
+                stepImage = (ImageView) itemView.findViewById(R.id.step_image);
+                addPictureIcon = (ImageView) itemView.findViewById(R.id.add_picture_icon);
+                addPictureIcon.setOnClickListener(this);
+            }
+            deleteIcon.setOnClickListener(this);
         }
 
         @Override
         public void onClick(View v) {
             if (v instanceof ImageView) {
-                deleteItem(getAdapterPosition());
+                if(v.getTag().equals("delete_tag")) {
+                    deleteItem(getAdapterPosition());
+                }
+                else if(v.getTag().equals("add_picture_tag")) {
+                    if(v.getContext() instanceof AddRecipeActivity) {
+                        AddRecipeActivity activity = (AddRecipeActivity) v.getContext();
+                        activity.addStepPicture(getAdapterPosition());
+                    }
+                }
             }
         }
     }

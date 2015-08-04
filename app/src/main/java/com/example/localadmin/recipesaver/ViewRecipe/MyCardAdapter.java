@@ -19,10 +19,12 @@ import java.util.List;
 
 /**
  * Created on 7-7-2015.
- * Last changed on 28-7-2015
- * Current version: V 1.04
+ * Last changed on 4-8-2015
+ * Current version: V 1.06
  *
  * changes:
+ * V1.06 - 4-8-2015: improved Picasso implementation
+ * V1.05 - 3-8-2015:  addition of steps for CardViewHolder, steps and ingredients are now String instead of textview
  * V1.04 - 29-7-2015: Changes to support VierRecipeListActivity V1.05
  * V1.03 - 28-7-2015: improved Picasso implementation
  * V1.02 - 24-7-2015: improved Picasso implementation
@@ -49,19 +51,19 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
     }
 
     @Override
-    public void onBindViewHolder(CardViewHolder viewHolder, int i) {
+    public void onBindViewHolder(final CardViewHolder viewHolder, int i) {
         Log.d("RRROBIN APP", "MyCardAdapter onBindViewHolder + i = " + i);
         RecipeDataCard recipeDataCard = mItems.get(i);
-        Log.d("RRROBIN RECIPEDATA", "  1 viewHolder.title.getText() = " +  viewHolder.title.getText());
+        Log.d("RRROBIN RECIPEDATA", "  1 viewHolder.title.getText() = " + viewHolder.title.getText());
         viewHolder.title.setText(recipeDataCard.getName());
-        Log.d("RRROBIN RECIPEDATA", "  2 viewHolder.title.getText() = " + viewHolder.title.getText());
-        viewHolder.ingredients.setText(recipeDataCard.getIngredients());
+        viewHolder.ingredients =recipeDataCard.getIngredients();
+        viewHolder.steps =recipeDataCard.getSteps();
         Log.d("RRROBIN RECIPEDATA", "  recipeDataCard.getImagePath() = " + recipeDataCard.getImagePath());
         viewHolder.imagePath = recipeDataCard.getImagePath();
         //viewHolder.image.setImageBitmap(BitmapFactory.decodeFile(recipeDataCard.getImagePath()));
         // Picasso.with(viewHolder.image.getContext()).setIndicatorsEnabled(true);
 
-        Picasso picasso = new Picasso.Builder(viewHolder.image.getContext()).listener(new Picasso.Listener() {
+        final Picasso picasso = new Picasso.Builder(viewHolder.image.getContext()).listener(new Picasso.Listener() {
             @Override
             public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
                 Log.d("RRROBIN ERROR", " MyCardAdapter Picasso printStackTrace");
@@ -70,25 +72,25 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
             }
         }).build();
 
+        final File picassoFile = new File(recipeDataCard.getImagePath());
         picasso.with(viewHolder.image.getContext())
                 .setIndicatorsEnabled(true);
         picasso.with(viewHolder.image.getContext())
-                .load(new File(recipeDataCard.getImagePath()))
+                .load(picassoFile)
                 .fit()
                 .centerCrop()
                 .into(viewHolder.image, new com.squareup.picasso.Callback() {
                     @Override
                     public void onSuccess() {
-                        Log.d("RRROBIN APP", " MyCardAdapter Picasso onSuccess");
-
+                        Log.d("RRROBIN RECIPEDATA", " ViewRecipeListActivity Picasso onSuccess");
                     }
 
                     @Override
                     public void onError() {
-                        Log.d("RRROBIN ERROR", " MyCardAdapter Picasso onerror");
+                        Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
+                        picasso.with(viewHolder.image.getContext()).load(picassoFile).into(viewHolder.image);//TODO: what if this errors!
                     }
                 });
-
 /*
         Picasso.Builder builder = new Picasso.Builder(viewHolder.image.getContext());
         builder.indicatorsEnabled(true);
@@ -119,7 +121,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         if (mContext instanceof ViewRecipeListActivity) {
             ViewRecipeListActivity activity = (ViewRecipeListActivity) mContext;
             if(i==0 && activity.recipesSelectionType==activity.NEWEST_FROM_ADDRECIPE) {
-                activity.openDetails(viewHolder.image, viewHolder.imagePath, viewHolder.title, viewHolder.ingredients);
+                activity.openDetails(viewHolder.image, viewHolder.imagePath, viewHolder.title, viewHolder.ingredients, viewHolder.steps);
             }
         }
     }
@@ -145,15 +147,15 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
 
         public ImageView image;
         public TextView title;
-        public TextView ingredients;
+        public String[] ingredients;
         public String imagePath;
+        public String[] steps;
 
         public CardViewHolder(View itemView) {
             super(itemView);
             Log.d("RRROBIN APP", "MyCardAdapter CardViewHolder");
-            image = (ImageView) itemView.findViewById(R.id.img_thumbnail);
-            title = (TextView) itemView.findViewById(R.id.tv_nature);
-            ingredients = (TextView) itemView.findViewById(R.id.tv_des_nature);
+            image = (ImageView) itemView.findViewById(R.id.recipe_card_closed_image);
+            title = (TextView) itemView.findViewById(R.id.recipe_card_closed_title);
             image.setOnClickListener(this);
         }
 
@@ -161,7 +163,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         public void onClick(View view) {
             if (view.getContext() instanceof ViewRecipeListActivity) {
                 ViewRecipeListActivity activity = (ViewRecipeListActivity) view.getContext();
-                activity.openDetails(view, imagePath, title, ingredients);
+                activity.openDetails(view, imagePath, title, ingredients, steps);
             }
         }
     }

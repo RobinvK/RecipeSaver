@@ -17,6 +17,15 @@ import java.util.List;
 
 /**
  * Created on 23-6-2015.
+ * Last changed on 3-8-2015
+ * Current version: V 1.01
+ *
+ * changes:
+ * V1.02 - 4-8-2015: getRecipeIngredients & getNumberedRecipeStepsWithPath now return string arrays instead of strings
+ * V1.01 - 3-8-2015: addition of getNumberedRecipeSteps()
+ *                   distinction between recipe images (stored in separate table step table) and step images (path stored in step table)
+ *
+ * TODO: instead of saving full image paths, only save the image name and just look up the root for each activity?
  */
 public class DbAdapter {
 
@@ -81,14 +90,25 @@ public class DbAdapter {
         db.close();
         return(insertPos);
     }
+    public long insertStep(long recipeID, String description, String imagePath){
+        Log.d("RRROBIN RECIPEDATA", " recipeID : " + recipeID +" description : " + description  +" imagePath : " + imagePath + ".");
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(DbHelper.STEP_DESCRIPTION, description);
+        contentValues.put(DbHelper.STEP_R_UID, recipeID);
+        contentValues.put(DbHelper.STEP_IMAGE_PATH, imagePath);
+        long insertPos = db.insert(DbHelper.STEP_TABLE_NAME, null, contentValues);
+        db.close();
+        return(insertPos);
+    }
 
-    public long insertImage(long recipeID, String path){
+    public long insertRecipeImage(long recipeID, String path){
         Log.d("RRROBIN RECIPEDATA", " recipeID : " + recipeID +" path : " + path + ".");
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
-        contentValues.put(DbHelper.IMAGE_PATH, path);
-        contentValues.put(DbHelper.IMAGE_R_UID, recipeID);
-        long insertPos = db.insert(DbHelper.IMAGE_TABLE_NAME, null, contentValues);
+        contentValues.put(DbHelper.RECIPE_IMAGE_PATH, path);
+        contentValues.put(DbHelper.RECIPE_IMAGE_R_UID, recipeID);
+        long insertPos = db.insert(DbHelper.RECIPE_IMAGE_TABLE_NAME, null, contentValues);
         db.close();
         return(insertPos);
     }
@@ -167,12 +187,12 @@ public class DbAdapter {
 
     public String getRecipeImagePath(int index) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
-        String[] columns = {DbHelper.IMAGE_R_UID, DbHelper.IMAGE_PATH};
+        String[] columns = {DbHelper.RECIPE_IMAGE_R_UID, DbHelper.RECIPE_IMAGE_PATH};
         String[] selectionArgs={String.valueOf(index)};
-        Cursor cursor = db.query(DbHelper.IMAGE_TABLE_NAME, columns, DbHelper.IMAGE_R_UID+" =?", selectionArgs, null, null, null);
+        Cursor cursor = db.query(DbHelper.RECIPE_IMAGE_TABLE_NAME, columns, DbHelper.RECIPE_IMAGE_R_UID+" =?", selectionArgs, null, null, null);
         String recipeName = "";
         while (cursor.moveToNext()){
-            int index1 = cursor.getColumnIndex(DbHelper.IMAGE_PATH);
+            int index1 = cursor.getColumnIndex(DbHelper.RECIPE_IMAGE_PATH);
             recipeName = cursor.getString(index1);
         }
         cursor.close();
@@ -180,7 +200,7 @@ public class DbAdapter {
         return recipeName;
     }
 
-    public String getRecipeIngredients(int index) {
+    public String[] getRecipeIngredients(int index) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         String[] columns = {DbHelper.LINK_R_UID, DbHelper.LINK_I_UID};
         String[] selectionArgs={String.valueOf(index)};
@@ -197,20 +217,46 @@ public class DbAdapter {
 
         cursor = db.rawQuery(query, allIngredients);
 
-        StringBuilder buffer = new StringBuilder();
+        String[] returnIngredients = new String[cursor.getCount()];
         for (int i = 0; i < cursor.getCount(); i++) {  //cursor.getCount() ipv arraySize because cursor.getCount() is lower if there are duplicate entries!
             cursor.moveToNext();
             int index1 = cursor.getColumnIndex(DbHelper.INGREDIENT_NAME);
-            String ingredientName = cursor.getString(index1);
-            buffer.append(ingredientName);
-            if (i < arraySize - 1) {
-                buffer.append(", ");
-            }
+            returnIngredients[i] = cursor.getString(index1);
         }
 
         cursor.close();
         db.close();
-        return buffer.toString();
+        return returnIngredients;
+    }
+
+
+
+    public String[] getNumberedRecipeStepsWithPath(int index) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        String[] columns = {DbHelper.STEP_R_UID, DbHelper.STEP_DESCRIPTION, DbHelper.STEP_IMAGE_PATH};
+        String[] selectionArgs={String.valueOf(index)};
+        Cursor cursor = db.query(DbHelper.STEP_TABLE_NAME, columns, DbHelper.STEP_R_UID + " =?", selectionArgs, null, null, null);
+        int arraySize = cursor.getCount();
+        String[] stringArray = new String[arraySize];
+        StringBuilder buffer = new StringBuilder();
+        for (int i = 0; i < arraySize; i++) {
+            buffer.setLength(0);
+            cursor.moveToNext();
+            int index1 = cursor.getColumnIndex(DbHelper.STEP_DESCRIPTION);
+            int index2 = cursor.getColumnIndex(DbHelper.STEP_IMAGE_PATH);
+            String stepDescription = cursor.getString(index1);
+            String stepImagePath = cursor.getString(index2);
+            if(stepImagePath!=null && !stepImagePath.equals("")&& !stepImagePath.equals(" ")) {
+                buffer.append((i + 1)).append(".").append(stepDescription).append(", has image at the following path: ").append(stepImagePath);
+            }
+            else{
+                buffer.append((i + 1)).append(".").append(stepDescription);
+            }
+            stringArray[i] = buffer.toString();
+        }
+        cursor.close();
+        db.close();
+        return stringArray;
     }
 
 
@@ -321,7 +367,7 @@ public class DbAdapter {
     static class DbHelper extends SQLiteOpenHelper {
 
         private static final String DATABASE_NAME = "RecipeDatabase";
-        private static final int DATABASE_VERSION = 3;
+        private static final int DATABASE_VERSION = 6;
 
         //recipes
         private static final String RECIPE_TABLE_NAME = "RECIPE_TABLE";
@@ -353,28 +399,31 @@ public class DbAdapter {
         private static final String STEP_TABLE_NAME = "STEP_TABLE";
         private static final String STEP_UID="_id";
         private static final String STEP_R_UID = "RecipeID";
-        private static final String STEP_DESCRIPTION = "Description";
+        private static final String STEP_DESCRIPTION = "Description";;
+        private static final String STEP_IMAGE_PATH = "ImagePath";
 
         private static final String STEP_CREATE_TABLE = "CREATE TABLE "+STEP_TABLE_NAME+" ("+
                 STEP_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+
                 STEP_R_UID+" INTEGER, "+
-                STEP_DESCRIPTION+" VARCHAR(1000));";
+                STEP_DESCRIPTION+" VARCHAR(1000), "+
+                STEP_IMAGE_PATH+" VARCHAR(1000));";
         private static final String STEP_DROP_TABLE = "DROP TABLE IF EXISTS "+STEP_TABLE_NAME;
 
 
-        //steps
-        private static final String IMAGE_TABLE_NAME = "IMAGE_TABLE";
-        private static final String IMAGE_UID="_id";
-        private static final String IMAGE_R_UID = "RecipeID";
-        private static final String IMAGE_PATH = "Path";
+        // recipe images
+        private static final String RECIPE_IMAGE_TABLE_NAME = "RECIPE_IMAGE_TABLE";
+        private static final String RECIPE_IMAGE_UID="_id";
+        private static final String RECIPE_IMAGE_R_UID = "RecipeID";
+        private static final String RECIPE_IMAGE_PATH = "Path";
 
-        private static final String IMAGE_CREATE_TABLE = "CREATE TABLE "+IMAGE_TABLE_NAME+" ("+
-                IMAGE_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+
-                IMAGE_R_UID+" INTEGER, "+
-                IMAGE_PATH+" VARCHAR(1000));";
-        private static final String IMAGE_DROP_TABLE = "DROP TABLE IF EXISTS "+IMAGE_TABLE_NAME;
+        private static final String RECIPE_IMAGE_CREATE_TABLE = "CREATE TABLE "+RECIPE_IMAGE_TABLE_NAME+" ("+
+                RECIPE_IMAGE_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+
+                RECIPE_IMAGE_R_UID+" INTEGER, "+
+                RECIPE_IMAGE_PATH+" VARCHAR(1000));";
+        private static final String RECIPE_IMAGE_DROP_TABLE = "DROP TABLE IF EXISTS "+RECIPE_IMAGE_TABLE_NAME;
 
-        //links
+
+        //link between recipes and ingredients
         private static final String LINK_TABLE_NAME = "RECIPE_INGREDIENTS_LINK_TABLE";
         private static final String LINK_UID="_id";
         private static final String LINK_I_UID = "IngredientID";
@@ -396,18 +445,20 @@ public class DbAdapter {
 
         public DbHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
+            Log.d("RRROBIN DATABASE", " DbHelper DATABASE_NAME = "+DATABASE_NAME+", DATABASE_VERSION = "+DATABASE_VERSION);
             this.context = context;
             Toast.makeText(context, "DbAdapter Called",Toast.LENGTH_LONG).show();//TODO: remove
         }
 
         @Override
         public void onCreate(SQLiteDatabase db) {
+            Log.d("RRROBIN DATABASE", " onCreate ");
             try {
                 Toast.makeText(context, "onCreate Called",Toast.LENGTH_LONG).show();//TODO: remove
                 db.execSQL(RECIPE_CREATE_TABLE);
                 db.execSQL(INGREDIENT_CREATE_TABLE);
                 db.execSQL(STEP_CREATE_TABLE);
-                db.execSQL(IMAGE_CREATE_TABLE);
+                db.execSQL(RECIPE_IMAGE_CREATE_TABLE);
                 db.execSQL(LINK_CREATE_TABLE);
             } catch (Exception  e){
                 Toast.makeText(context, ""+e,Toast.LENGTH_LONG).show();//TODO: remove
@@ -424,7 +475,7 @@ public class DbAdapter {
                 db.execSQL(RECIPE_DROP_TABLE);
                 db.execSQL(INGREDIENT_DROP_TABLE);
                 db.execSQL(STEP_DROP_TABLE);
-                db.execSQL(IMAGE_DROP_TABLE);
+                db.execSQL(RECIPE_IMAGE_DROP_TABLE);
                 db.execSQL(LINK_DROP_TABLE);
                 onCreate(db);
             } catch (Exception  e){

@@ -36,30 +36,64 @@
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="4dp" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0.6dp"
-                android:layout_marginLeft="@dimen/default_margin"
-                android:layout_marginRight="@dimen/default_margin"
-                android:background="#fff" />
 
-            <TextView
-                android:id="@+id/details_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="@dimen/default_margin"
-                android:layout_marginRight="@dimen/default_margin"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="@dimen/default_margin"
-                android:textSize="14sp"
-                android:textColor="#eee"
-                android:lineSpacingExtra="4sp" />
-
-
-            <View
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="600dp"
-                android:background="#ff0000" />
+                android:background="#ffffff"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/ingredients_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/default_margin"
+                    android:layout_marginRight="@dimen/default_margin"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="@dimen/default_margin"
+                    android:textSize="17sp"
+                    android:text="Ingredients"
+                    android:textColor="#444"
+                    android:lineSpacingExtra="4sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/ingredients_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/default_margin"
+                    android:layout_marginRight="@dimen/default_margin"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="@dimen/default_margin"
+                    android:textSize="14sp"
+                    android:textColor="#444"
+                    android:lineSpacingExtra="4sp" />
+
+                <TextView
+                    android:id="@+id/steps_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/default_margin"
+                    android:layout_marginRight="@dimen/default_margin"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="@dimen/default_margin"
+                    android:textSize="17sp"
+                    android:text="Steps"
+                    android:textColor="#444"
+                    android:lineSpacingExtra="4sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/steps_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/default_margin"
+                    android:layout_marginRight="@dimen/default_margin"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="@dimen/default_margin"
+                    android:textSize="14sp"
+                    android:textColor="#444"
+                    android:lineSpacingExtra="4sp" />
+
+            </LinearLayout>
         </LinearLayout>
     </com.example.localadmin.recipesaver.ViewRecipe.ScrollViewExt>
 </LinearLayout>

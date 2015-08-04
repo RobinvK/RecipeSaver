@@ -27,6 +27,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -46,35 +47,38 @@ import java.util.Random;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 3-8-2015
- * Current version: V 1.06
- *
+ * Last changed on 4-8-2015
+ * Current version: V 1.07
+ * <p/>
  * changes:
+ * V1.07 - 4-8-2015: ability to add pictures to steps
  * V1.06 - 3-8-2015: back to Picasso 2.5.2 due to problems with taking camera pictures and adding them to the imageview
- *                    implementation of camera option on addimage
+ * implementation of camera option on addimage
  * V1.05 - 28-7-2015: improved Picasso implementation
  * V1.04 - 25-7-2015: revert to Picasso 2.4.0 from 2.5.2 due to MarkableInputStream bug
  * V1.03 - 24-7-2015: implementation of Picasso
  * V1.02 - 23-7-2015: implementation of adding an image
  * V1.01 - 9-7-2015: implementation of onRestoreInstanceState & onSaveInstanceState to retain elements added to the Recyclerviews on orientation change
-
- TODO: update for most stable Picasso build. Problems with evy's uitnodiging in gallery/downloads (likely due to .fit or .centercrop) and problems with taking camera pictures and adding them to the imageview in combination with orietnation changes
- TODO: when entering an ingredient / a step with a long description the textview's height doesn't automatically adjust. it does when the screen rotates or blacks out.
- TODO: image is now saved in documents and in gallery/recipesaver folder, is there a way to cache the image after taking a picture? or remove from documents after saving in gallery/recipesaver folder?
+ * <p/>
+ * TODO: update for most stable Picasso build. Problems with evy's uitnodiging in gallery/downloads (likely due to .fit or .centercrop) and problems with taking camera pictures and adding them to the imageview in combination with orietnation changes
+ * TODO: image is now saved in documents and in gallery/recipesaver folder, is there a way to cache the image after taking a picture? or remove from documents after saving in gallery/recipesaver folder?
  */
 public class AddRecipeActivity extends AppCompatActivity {
     DbAdapter dbHelper;
 
     private MyRecyclerViewAdapter ingredientListAdapter;
     private MyRecyclerViewAdapter stepListAdapter;
-    ArrayList<DataObject> ingredientData;
-    ArrayList<DataObject> stepData;
+    ArrayList<DataObject> ingredientData = null;
+    ArrayList<DataObject> stepData = null;
 
-    private int PICK_IMAGE_REQUEST = 1;
+    private static final int PICK_COVER_IMAGE_REQUEST = 1;
+    private static final int PICK_STEP_IMAGE_REQUEST = 2;
     private String selectedImagePath = "N/A";
 
     private File root;
-    private Uri outputFileUri;
+    private Uri outputFileUri = null;
+
+    private int selectedStepIndex = 0;
 
 
     @Override
@@ -94,9 +98,19 @@ public class AddRecipeActivity extends AppCompatActivity {
         }
 
         setFileRoot();
+
+        Button btn = (Button) findViewById(R.id.button_image_add_recipe);
+
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addImage(PICK_COVER_IMAGE_REQUEST);
+            }
+        });
+
     }
 
-    private void setFileRoot(){
+    private void setFileRoot() {
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO) {
                 root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "/RecipeSaver/");
@@ -110,13 +124,13 @@ public class AddRecipeActivity extends AppCompatActivity {
                 root.mkdirs();
                 Log.d("RRROBIN RECIPEDATA", " 3 setFileRoot imagesFolder: " + root);
             }
-        }
-        else{
+        } else {
             //TODO: no external media mounted, what now?
             Log.d("RRROBIN RECIPEDATA", " no external media mounted, what now? ");
 
         }
     }
+
     @Override
     protected void onRestoreInstanceState(final Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
@@ -129,8 +143,9 @@ public class AddRecipeActivity extends AppCompatActivity {
     }
 
     private void getSavedData(Bundle savedInstanceState) {
-        ingredientData = savedInstanceState.getParcelableArrayList("myIngredientData");
-        stepData = savedInstanceState.getParcelableArrayList("myStepData");
+        if (savedInstanceState.containsKey("myIngredientData")) {
+            ingredientData = savedInstanceState.getParcelableArrayList("myIngredientData");
+        }
         if (ingredientData != null) {
             ingredientListAdapter = new MyRecyclerViewAdapter(ingredientData, "INGREDIENT");
             setupRecyclerView((RecyclerView) findViewById(R.id.my_ingredient_recycler_view), ingredientListAdapter);
@@ -138,6 +153,9 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN RECIPEDATA", "ingredientData == null");
         }
 
+        if (savedInstanceState.containsKey("myStepData")) {
+            stepData = savedInstanceState.getParcelableArrayList("myStepData");
+        }
         if (stepData != null) {
             stepListAdapter = new MyRecyclerViewAdapter(stepData, "STEP");
             setupRecyclerView((RecyclerView) findViewById(R.id.my_step_recycler_view), stepListAdapter);
@@ -145,6 +163,10 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN RECIPEDATA", "stepData == null");
         }
 
+        if (savedInstanceState.containsKey("selectedStepIndex")) {
+            selectedStepIndex = savedInstanceState.getInt("selectedStepIndex");
+            Log.d("RRROBIN APP", "AddRecipeActivity getSavedData selectedStepIndex = " + selectedStepIndex);
+        }
         if (savedInstanceState.containsKey("cameraImageUri")) {
             outputFileUri = Uri.parse(savedInstanceState.getString("cameraImageUri"));
             Log.d("RRROBIN APP", "AddRecipeActivity getSavedData outputFileUri = " + outputFileUri.toString());
@@ -154,8 +176,8 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN APP", "AddRecipeActivity getSavedData selectedImagePath = " + selectedImagePath);
         }
 
-        if(selectedImagePath.equals("N/A")){//TODO: now selectedImagePath is saved and setImage is called on restoreInstanceState if selectedImagePath = "N/A". This calls Picasso to again store the image in imageview, is there no better (direct) way, perhaps to store the imageview sttate?
-            setImage();
+        if (selectedImagePath.equals("N/A")) {//TODO: now selectedImagePath is saved and setImage is called on restoreInstanceState if selectedImagePath = "N/A". This calls Picasso to again store the image in imageview, is there no better (direct) way, perhaps to store the imageview sttate?
+            setCoverImage();
         }
     }
 
@@ -167,10 +189,11 @@ public class AddRecipeActivity extends AppCompatActivity {
         outState.putParcelableArrayList("myIngredientData", ingredientData);
         stepData = stepListAdapter.getDataSet();
         outState.putParcelableArrayList("myStepData", stepData);
+        outState.putInt("selectedStepIndex", selectedStepIndex);
 
         if (outputFileUri != null) {
             outState.putString("cameraImageUri", outputFileUri.toString());
-            Log.d("RRROBIN APP", "AddRecipeActivity onSaveInstanceState outputFileUri = "+outputFileUri.toString());
+            Log.d("RRROBIN APP", "AddRecipeActivity onSaveInstanceState outputFileUri = " + outputFileUri.toString());
         }
 
         outState.putString("selectedImagePath", selectedImagePath);
@@ -227,28 +250,27 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN RECIPEDATA", "addRecipe recipe " + title + " added at " + recipeID + ".");
 
             //-------Add ingredients---------
-            String ingredients = ingredientListAdapter.getDataAsString();
-            String[] separated = ingredients.split("`");
+            String[] ingredients = ingredientListAdapter.getData();
 
-            if (separated.length == 0) {
+            if (ingredients.length == 0) {
                 Toast.makeText(this, "Please add at least one ingredient", Toast.LENGTH_LONG).show();//TODO: improve UI
                 return;
             }
 
-            for (int i = 0; i < separated.length - 1; i++) {
-                separated[i] = separated[i].trim();
-                separated[i] = separated[i].toLowerCase();
-                if (separated[i] == null || separated[i].equals("") || separated[i].equals(" ")) {
-                    Log.d("RRROBIN ERROR", "addRecipe ingredient invalid: " + separated[i] + ".");
-                } else if (dbHelper.IsIngredientAlreadyInDB(separated[i])) {
-                    long ingredientID = dbHelper.getIngredientID(separated[i]);
-                    Log.d("RRROBIN RECIPEDATA", "addRecipe ingredient " + separated[i] + " already exists @ " + ingredientID + ".");
+            for (int i = 0; i < ingredients.length; i++) {
+                ingredients[i] = ingredients[i].trim();
+                ingredients[i] = ingredients[i].toLowerCase();
+                if (ingredients[i] == null || ingredients[i].equals("") || ingredients[i].equals(" ")) {
+                    Log.d("RRROBIN ERROR", "addRecipe ingredient invalid: " + ingredients[i] + ".");
+                } else if (dbHelper.IsIngredientAlreadyInDB(ingredients[i])) {
+                    long ingredientID = dbHelper.getIngredientID(ingredients[i]);
+                    Log.d("RRROBIN RECIPEDATA", "addRecipe ingredient " + ingredients[i] + " already exists @ " + ingredientID + ".");
                     dbHelper.insertIngredientRecipeLink(recipeID, ingredientID);
                     //TODO: check ID for correct entry
 
                 } else {
-                    long ingredientID = dbHelper.insertIngredient(separated[i]);
-                    Log.d("RRROBIN RECIPEDATA", "addRecipe ingredient " + separated[i] + " added to DB @ " + ingredientID + ".");
+                    long ingredientID = dbHelper.insertIngredient(ingredients[i]);
+                    Log.d("RRROBIN RECIPEDATA", "addRecipe ingredient " + ingredients[i] + " added to DB @ " + ingredientID + ".");
                     //TODO: check ID for correct entry
                     dbHelper.insertIngredientRecipeLink(recipeID, ingredientID);
                     //TODO: check ID for correct entry
@@ -257,38 +279,49 @@ public class AddRecipeActivity extends AppCompatActivity {
 
             //-------Add steps---------
 
-            String steps = stepListAdapter.getDataAsString();
-            separated = steps.split("`");
+            String steps[] = stepListAdapter.getData();
+            String[] localStepImagePaths = stepListAdapter.getImagePaths();
 
-            if (separated.length == 0) {
+            if (steps.length == 0) {
                 Toast.makeText(this, "Please add at least one step", Toast.LENGTH_LONG).show();//TODO: improve UI
                 return;
             }
+            if(steps.length !=localStepImagePaths.length){
+                Log.d("RRROBIN ERROR", "missmatch in array length: localStepImagePaths.length = "+localStepImagePaths.length + ", separated.length = " + steps.length + ".");
+                return;
+            }
 
-            for (int i = 0; i < separated.length - 1; i++) {
-                separated[i] = separated[i].trim();
-                if (separated[i] == null || separated[i].equals("") || separated[i].equals(" ")) {
-                    Log.d("RRROBIN ERROR", "addRecipe step invalid: " + separated[i] + ".");
+            for (int i = 0; i < steps.length; i++) {
+                steps[i] = steps[i].trim();
+                if (steps[i] == null || steps[i].equals("") || steps[i].equals(" ")) {
+                    Log.d("RRROBIN ERROR", "addRecipe step invalid: " + steps[i] + ".");
                 } else {
-                    Log.d("RRROBIN RECIPEDATA", "addRecipe step for recipe " + recipeID + " added to DB @ " + dbHelper.insertStep(recipeID, separated[i]) + ".");
-                    //TODO: check ID for correct entry
+                    Bitmap stepImage = BitmapFactory.decodeFile(localStepImagePaths[i]);
+
+                    String savedStepImagePath = SaveImage(stepImage, title + "_step" + i + "_", 65);
+                    if (savedStepImagePath.equals("N/A")) {
+                        Log.d("RRROBIN RECIPEDATA", "addRecipe step " + i + " has no image for recipe " + recipeID + " added to DB @ " + dbHelper.insertStep(recipeID, steps[i]) + ".");
+                    } else {
+                        Log.d("RRROBIN RECIPEDATA", "addRecipe step image for recipe " + recipeID + ", step " + i + " added to DB @ " + dbHelper.insertStep(recipeID, steps[i], savedStepImagePath) + ". path = " + savedStepImagePath);
+                        //TODO: check ID for correct entry
+                    }
                 }
             }
 
 
-            //-------Add images---------
+            //-------save images---------
+            //cover image
             if (selectedImagePath.equals("N/A")) {
                 Log.d("RRROBIN WARNING", " addRecipe, no image was uploaded ");
-            }
-            else{
+            } else {
                 Bitmap recipeImage = BitmapFactory.decodeFile(selectedImagePath);
 
-                String imagePath = SaveImage(recipeImage, title);
+                String imagePath = SaveImage(recipeImage, title, 75);
 
                 if (imagePath.equals("N/A")) {
                     Log.d("RRROBIN ERROR", " addRecipe, image not saved ");
                 } else {
-                    Log.d("RRROBIN RECIPEDATA", " addRecipe, image for recipe " + recipeID + " added to DB @ " + dbHelper.insertImage(recipeID, imagePath) + ".");
+                    Log.d("RRROBIN RECIPEDATA", " addRecipe, image for recipe " + recipeID + " added to DB @ " + dbHelper.insertRecipeImage(recipeID, imagePath) + ".");
                 }
             }
 
@@ -301,14 +334,14 @@ public class AddRecipeActivity extends AppCompatActivity {
     }
 
 
-    private String SaveImage(Bitmap finalBitmap, String title) {
+    private String SaveImage(Bitmap finalBitmap, String title, int quality) {
         //TODO: more effective image saving library? also reduce the size of the image?
         File myFile;
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 
         if (finalBitmap != null) {
-            Log.d("RRROBIN RECIPEDATA", " finalBitmap exists ");
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 70, bytes);//TODO: settings option for image quality
+            Log.d("RRROBIN RECIPEDATA", " SaveImage "+title+" finalBitmap exists ");
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, bytes);//TODO: settings option for image quality
         }
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
 
@@ -320,7 +353,7 @@ public class AddRecipeActivity extends AppCompatActivity {
             try {
                 FileOutputStream out = new FileOutputStream(myFile);
                 if (finalBitmap != null) {
-                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 70, out);//another compress?
+                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, out);//another compress?
                 } else {
                     Log.d("RRROBIN RECIPEDATA", " finalBitmap = null");
                     return "N/A";
@@ -348,10 +381,14 @@ public class AddRecipeActivity extends AppCompatActivity {
 
     }
 
+    public void addStepPicture(int index) {
+        addImage(PICK_STEP_IMAGE_REQUEST);
+        selectedStepIndex = index;
+        Log.d("RRROBIN ERROR", " AddRecipeActivity addStepPicture selectedStepIndex = " + selectedStepIndex);
+    }
 
-    public void addImage(View view) {
-
-
+    //used to add an image to either the cover of the recipe or to a step.
+    public void addImage(int requestType) {
 
         // Camera.
         final List<Intent> cameraIntents = new ArrayList<Intent>();
@@ -359,11 +396,11 @@ public class AddRecipeActivity extends AppCompatActivity {
         final PackageManager packageManager = getPackageManager();
         final List<ResolveInfo> listCam = packageManager.queryIntentActivities(captureIntent, 0);
 
-        final String fname = "img_"+ System.currentTimeMillis() + ".jpg";
+        final String fname = "img_" + System.currentTimeMillis() + ".jpg";
         final File sdImageMainDirectory = new File(root, fname);
         outputFileUri = Uri.fromFile(sdImageMainDirectory);
 
-        for(ResolveInfo res : listCam) {
+        for (ResolveInfo res : listCam) {
             final String packageName = res.activityInfo.packageName;
             final Intent intent = new Intent(captureIntent);
             intent.setComponent(new ComponentName(res.activityInfo.packageName, res.activityInfo.name));
@@ -373,10 +410,10 @@ public class AddRecipeActivity extends AppCompatActivity {
         }
 
 
-        Intent galleryIntent  = new Intent();
+        Intent galleryIntent = new Intent();
         // Show only images, no videos or anything else
-        galleryIntent .setType("image/*");
-        galleryIntent .setAction(Intent.ACTION_GET_CONTENT);
+        galleryIntent.setType("image/*");
+        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
         // Always show the chooser (if there are multiple options available)
         //startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
 
@@ -386,7 +423,7 @@ public class AddRecipeActivity extends AppCompatActivity {
         // Add the camera options.
         chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, cameraIntents.toArray(new Parcelable[cameraIntents.size()]));
 
-        startActivityForResult(chooserIntent, PICK_IMAGE_REQUEST);
+        startActivityForResult(chooserIntent, requestType);
 
 
 /*      //open with different type of gallery
@@ -407,9 +444,60 @@ public class AddRecipeActivity extends AppCompatActivity {
 
     }
 
-    private void setImage(){
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d("RRROBIN RECIPEDATA", " onActivityResult");
+
+        if (resultCode == RESULT_OK && (requestCode == PICK_COVER_IMAGE_REQUEST || requestCode == PICK_STEP_IMAGE_REQUEST)) {
+            Log.d("RRROBIN RECIPEDATA", " RESULT_OK");
+            Log.d("RRROBIN RECIPEDATA", " root uri =  " + root.toURI());
+
+            final boolean isCamera;
+            if (data == null || data.getData() == null) {
+                isCamera = true;
+                Log.d("RRROBIN RECIPEDATA", " 1 isCamera = true");
+            } else {
+                final String action = data.getAction();
+                if (action == null) {
+                    Log.d("RRROBIN RECIPEDATA", " 2 isCamera = false");
+                    isCamera = false;
+                } else {
+                    isCamera = action.equals(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                    Log.d("RRROBIN RECIPEDATA", " 3 isCamera = " + isCamera);
+                }
+            }
+            final Uri uri;
+            if (isCamera) {
+                uri = outputFileUri;
+            } else {
+                uri = data == null ? null : data.getData();
+            }
+
+            //Uri uri = data.getData();
+            Log.d("RRROBIN RECIPEDATA", " image uri =  " + uri);
+            Log.d("RRROBIN RECIPEDATA", " getPath =  " + getPath(this, uri));
 
 
+            if (requestCode == PICK_COVER_IMAGE_REQUEST) {
+                selectedImagePath = getPath(this, uri);
+                setCoverImage();//sets selected image to imageview with Picasso
+            } else if (requestCode == PICK_STEP_IMAGE_REQUEST) {
+                stepListAdapter.addImagePath(selectedStepIndex, getPath(this, uri));
+                //TODO now add the image to the step view
+            }
+
+        } else if (resultCode == RESULT_CANCELED) {
+            Log.d("RRROBIN WARNING", " RESULT_CANCELED");
+            Toast toast = Toast.makeText(this, "Canceled, no photo selected.", Toast.LENGTH_SHORT);
+            toast.show();
+        } else {
+            Log.d("RRROBIN ERROR", " no photo");//TODO: error?
+        }
+    }
+
+    private void setCoverImage() {
         final ImageView imageView = (ImageView) findViewById(R.id.image_view_add_recipe);
         //  imageView.setImageURI(uri);
         final Picasso picasso = new Picasso.Builder(imageView.getContext()).listener(new Picasso.Listener() {
@@ -442,51 +530,8 @@ public class AddRecipeActivity extends AppCompatActivity {
                         picasso.with(imageView.getContext()).load(picassoFile).into(imageView);//TODO: what if this errors!
                     }
                 });
-    }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        Log.d("RRROBIN RECIPEDATA", " onActivityResult");
-
-        if (resultCode == RESULT_OK && requestCode == PICK_IMAGE_REQUEST) {
-            Log.d("RRROBIN RECIPEDATA", " RESULT_OK");
-            Log.d("RRROBIN RECIPEDATA", " root uri =  " + root.toURI());
-
-            final boolean isCamera;
-            if (data == null || data.getData() == null) {
-                isCamera = true;
-                Log.d("RRROBIN RECIPEDATA", " 1 isCamera = true");
-            } else {
-                final String action = data.getAction();
-                if (action == null) {
-                    Log.d("RRROBIN RECIPEDATA", " 2 isCamera = false");
-                    isCamera = false;
-                } else {
-                    isCamera = action.equals(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-                    Log.d("RRROBIN RECIPEDATA", " 3 isCamera = "+isCamera);
-                }
-            }
-            final Uri uri;
-            if (isCamera) {
-                uri = outputFileUri;
-            } else {
-                uri = data == null ? null : data.getData();
-            }
-
-            //Uri uri = data.getData();
-            Log.d("RRROBIN RECIPEDATA", " image uri =  " + uri);
-            Log.d("RRROBIN RECIPEDATA", " getPath =  " + getPath(this, uri));
-
-
-            selectedImagePath = getPath(this, uri);
-
-
-            setImage();//sets selected image to imageview with Picasso
-
-
-            Log.d("RRROBIN RECIPEDATA", " after picasso: getPath =  " + getPath(this, uri));
-            /*
+          /*
             Picasso.Builder builder = new Picasso.Builder(this);
             builder.listener(new Picasso.Listener()
             {
@@ -531,31 +576,20 @@ public class AddRecipeActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
             */
-        }
-        else if (resultCode == RESULT_CANCELED) {
-            Log.d("RRROBIN WARNING", " RESULT_CANCELED");
-            Toast toast = Toast.makeText(this,"Canceled, no photo selected.", Toast.LENGTH_SHORT);
-            toast.show();
-        }
-        else{
-            Log.d("RRROBIN ERROR", " no photo");
-        }
     }
-
-
 
 
     public static String getPath(final Context context, final Uri uri) {
 
-            Log.d("RRROBIN RECIPEDATA", " File -" +
-                            "Authority: " + uri.getAuthority() +
-                            ", Fragment: " + uri.getFragment() +
-                            ", Port: " + uri.getPort() +
-                            ", Query: " + uri.getQuery() +
-                            ", Scheme: " + uri.getScheme() +
-                            ", Host: " + uri.getHost() +
-                            ", Segments: " + uri.getPathSegments().toString()
-            );
+        Log.d("RRROBIN RECIPEDATA", " File -" +
+                        "Authority: " + uri.getAuthority() +
+                        ", Fragment: " + uri.getFragment() +
+                        ", Port: " + uri.getPort() +
+                        ", Query: " + uri.getQuery() +
+                        ", Scheme: " + uri.getScheme() +
+                        ", Host: " + uri.getHost() +
+                        ", Segments: " + uri.getPathSegments().toString()
+        );
 
 
         // DocumentProvider
@@ -604,13 +638,12 @@ public class AddRecipeActivity extends AppCompatActivity {
                 }
 
                 final String selection = "_id=?";
-                final String[] selectionArgs = new String[] {
+                final String[] selectionArgs = new String[]{
                         split[1]
                 };
 
                 return getDataColumn(context, contentUri, selection, selectionArgs);
-            }
-            else{
+            } else {
                 Log.d("RRROBIN RECIPEDATA", " DocumentsContract.getDocumentId(uri)");
                 return DocumentsContract.getDocumentId(uri);
             }
@@ -633,10 +666,6 @@ public class AddRecipeActivity extends AppCompatActivity {
 
         return null;
     }
-
-
-
-
 
 
     public static String getDataColumn(Context context, Uri uri, String selection,
@@ -664,11 +693,9 @@ public class AddRecipeActivity extends AppCompatActivity {
     }
 
 
-
-
-  //  public static boolean isLocalStorageDocument(Uri uri) {
-  //      return LocalStorageProvider.AUTHORITY.equals(uri.getAuthority());
-  //  }
+    //  public static boolean isLocalStorageDocument(Uri uri) {
+    //      return LocalStorageProvider.AUTHORITY.equals(uri.getAuthority());
+    //  }
 
 
     public static boolean isExternalStorageDocument(Uri uri) {
@@ -688,25 +715,6 @@ public class AddRecipeActivity extends AppCompatActivity {
     public static boolean isGooglePhotosUri(Uri uri) {
         return "com.google.android.apps.photos.content".equals(uri.getAuthority());
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }

@@ -14,7 +14,7 @@
 
         <TextView
             android:paddingTop="10dp"
-            android:id="@+id/textView1"
+            android:id="@+id/recyclerview_text"
 
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
@@ -25,7 +25,7 @@
             android:textAppearance="?android:attr/textAppearanceSmall" />
 
         <ImageView
-            android:id="@+id/listIcon"
+            android:id="@+id/delete_icon"
 
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"

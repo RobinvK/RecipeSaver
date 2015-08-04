@@ -3,8 +3,8 @@ package com.example.localadmin.recipesaver;
 /**
  * APP VERSION HISTORY
  *
- * Current version: V APP_1.00
- *
+ * Current version: V APP_1.01
+ * V APP_1.01 - 4-8-2015: you can now upload images to individual steps.
  * V APP_1.00 - 3-8-2015: first app version. Activities
  * AddRecipeActivity: add a title, an image from camera or gallery, steps and ingredients to your ingredient and save it
  * ViewRecipeListActivity: lists your recipes. Opens up a single recipe when one is selected from the recipe list.
@@ -64,16 +64,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         createToolbar();
         createNavigationDrawer();
-
-
     }
 
     private void createToolbar(){
         mToolbar = (Toolbar)findViewById(R.id.app_bar);
         setSupportActionBar(mToolbar);
     }
-
-
 
     //------------------DRAWER FUNCTIONS----------------
     private void createNavigationDrawer(){
@@ -88,7 +84,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         //set username in drawer header welcome
         SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
         String userName = sharedPreferences.getString("UserName",DEFAULT_PREFERENCE_VALUE);
-        if(userName != null && !userName.equals(DEFAULT_PREFERENCE_VALUE)){
+        if(!userName.equals(DEFAULT_PREFERENCE_VALUE)){
             TextView welcomeField = (TextView)findViewById(R.id.header_username);
             welcomeField.setText("Welcome "+userName+"!");
         }
@@ -104,7 +100,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         //is the app starting for the first time or is it coming back from a rotation?
         //mSelectedId = (if statement) ? (if statement true so mSelectedId is this) : (else, if statement false so mSelectedId is this)
        // mSelectedId = savedInstanceState == null ? -1 : savedInstanceState.getInt(SELECTED_ITEM_ID);
-
     }
 
     private boolean didUserSeeDrawer(){
@@ -141,11 +136,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         outState.putInt(SELECTED_ITEM_ID, mSelectedId);
     }
 
-
-
-
     //------------------NAVIGATION----------------
-
 
     @Override
     public boolean onNavigationItemSelected(MenuItem menuItem) {

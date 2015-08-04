@@ -3,10 +3,13 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 /**
  * Created on 22-6-2015.
 
- * Last changed on 3-8-2015
- * Current version: V 1.06
+ * Last changed on 4-8-2015
+ * Current version: V 1.08
  *
  * changes:
+ * V1.08 - 4-8-2015: improved Picasso implementation
+ *                   if a step includes an image, for now show the path to that image
+ * V1.07 - 3-8-2015: layout changes for opened recipe card
  * V1.06 - 3-8-2015: back to Picasso 2.5.2 due to problems in AddRecipeActivity V1.06
  * V1.05 - 29-7-2015: Addition of recipesSelectionType. Automatically opens the newly created recipe if started from AddRecipe Activity
  * V1.04 - 28-7-2015: improved Picasso implementation
@@ -96,7 +99,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             setScrollViewListener();//Update full recipe view's FoldableItemLayout with ScrollView's Scroll-position
         }
 
-        Log.d("RRROBIN RECIPEDATA", "end of onCreate " );
+        Log.d("RRROBIN RECIPEDATA", "end of onCreate ");
     }
 
     private void setUpRecyclerView() {
@@ -140,11 +143,13 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
 
         //Create a RecipeDataCard object for each recipe ID in the recipeSelection array, fill the card with information and store it in mAdapter
+
         for (int i = 0; i < recipeSelection.length; i++) {
             RecipeDataCard recipeCard = new RecipeDataCard();
             recipeCard.setIndex(recipeSelection[i]);
             recipeCard.setName(dbHelper.getRecipeName(recipeSelection[i]));
             recipeCard.setIngredients(dbHelper.getRecipeIngredients(recipeSelection[i]));
+            recipeCard.setSteps(dbHelper.getNumberedRecipeStepsWithPath(recipeSelection[i]));
             recipeCard.setThumbnail(R.drawable.ig);
             recipeCard.setImagePath(dbHelper.getRecipeImagePath(recipeSelection[i]));
             mAdapter.addItem(recipeCard);
@@ -226,12 +231,13 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         }
     }
 
-    public void openDetails(View coverView, String recipeImagePath, TextView recipeTitle, TextView recipeIngredients) {
-        ImageView image = (ImageView) findViewById(R.id.details_image);
-        TextView title = (TextView) findViewById(R.id.details_title);
-        TextView ingredients = (TextView) findViewById(R.id.details_text);
+    public void openDetails(View coverView, String recipeImagePath, TextView recipeTitle, String[] recipeIngredients, String[] recipeSteps) {
+        final ImageView image = (ImageView) findViewById(R.id.details_image);
+        final TextView title = (TextView) findViewById(R.id.details_title);
+        TextView ingredients = (TextView) findViewById(R.id.ingredients_text);
+        TextView steps = (TextView) findViewById(R.id.steps_text);
 
-        Picasso picasso = new Picasso.Builder(image.getContext()).listener(new Picasso.Listener() {
+        final Picasso picasso = new Picasso.Builder(image.getContext()).listener(new Picasso.Listener() {
             @Override
             public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
                 Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso printStackTrace");
@@ -240,10 +246,11 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             }
         }).build();
 
+        final File picassoFile = new File(recipeImagePath);
         picasso.with(image.getContext())
                 .setIndicatorsEnabled(true);
         picasso.with(image.getContext())
-                .load(new File(recipeImagePath))
+                .load(picassoFile)
                 .fit()
                 .centerCrop()
                 .into(image, new com.squareup.picasso.Callback() {
@@ -255,6 +262,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                     @Override
                     public void onError() {
                         Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
+                        picasso.with(image.getContext()).load(picassoFile).into(image);//TODO: what if this errors!
                     }
                 });
 
@@ -288,8 +296,20 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                     }
                 });
 */
+        StringBuilder builder = new StringBuilder();
         title.setText(recipeTitle.getText());
-        ingredients.setText(recipeIngredients.getText());
+
+        for(String s : recipeIngredients) {
+            builder.append(s).append("\n");
+        }
+        ingredients.setText(builder.toString());
+        builder.setLength(0);
+
+        for(String s : recipeSteps) {
+            builder.append(s).append("\n");
+        }
+        steps.setText(builder.toString());
+
         mUnfoldableView.unfold(coverView, mDetailsLayout);
     }
 

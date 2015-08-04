@@ -5,19 +5,29 @@ import android.os.Parcelable;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 9-7-2015
- * Current version: V 1.01
+ * Last changed on 4-8-2015
+ * Current version: V 1.02
  *
  * changes:
+ * V1.02 - 4-8-2015: implementation of setImagePath & getImagePath to accommodate V1.07 changes to AddRecipeActivity
  * V1.01 - 9-7-2015: implementation of Parcelable to accommodate V1.01 changes to AddRecipeActivity
  *
  */
 
 public class DataObject implements Parcelable {
     private String mText1;
+    private String imagePath = "N/A";
 
     DataObject(String text1){
         mText1 = text1;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 
     public String getmText1() {
