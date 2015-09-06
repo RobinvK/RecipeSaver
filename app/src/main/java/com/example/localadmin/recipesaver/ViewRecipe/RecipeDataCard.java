@@ -4,27 +4,36 @@ import android.view.View;
 
 /**
  * Created on 7-7-2015.
- * Last changed on 3-8-2015
- * Current version: V 1.02
+ * Last changed on 9-8-2015
+ * Current version: V 1.03
  *
  * changes:
+ * V1.03 - 9-8-2015:  removal of get/set thumbnail
  * V1.02 - 3-8-2015:  addition of steps
  * V1.01 - 29-7-2015: Name changes
  *
  */
 public class RecipeDataCard {
-    private long recipeIndex;
+    private long mrecipeIndex;
     private String mName;
-    private String[] mIng;
+    private String[] mIngredients;
     private String[] mSteps;
-    private String imagePath;
+    private String mimagePath;
     private int mThumbnail;
 
+    private Boolean isOnline;
+
+    public Boolean getOnline() {
+        return isOnline;
+    }
+    public void setOnline(Boolean online) {
+        this.isOnline = online;
+    }
     public long getIndex() {
-        return recipeIndex;
+        return mrecipeIndex;
     }
     public void setIndex(long index) {
-        this.recipeIndex = index;
+        this.mrecipeIndex = index;
     }
 
     public String getName() {
@@ -42,24 +51,18 @@ public class RecipeDataCard {
     }
 
     public String[] getIngredients() {
-        return mIng;
+        return mIngredients;
     }
-    public void setIngredients(String[] ing) {
-        this.mIng = ing;
+    public void setIngredients(String[] ingredients) {
+        this.mIngredients = ingredients;
     }
 
     public String getImagePath() {
-        return imagePath;
+        return mimagePath;
     }
     public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
+        this.mimagePath = imagePath;
     }
 
-    public int getThumbnail() {
-        return mThumbnail;
-    }
-    public void setThumbnail(int thumbnail) {
-        this.mThumbnail = thumbnail;
-    }
 
 }

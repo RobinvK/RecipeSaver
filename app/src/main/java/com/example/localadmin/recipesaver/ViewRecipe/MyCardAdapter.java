@@ -58,66 +58,54 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         viewHolder.title.setText(recipeDataCard.getName());
         viewHolder.ingredients =recipeDataCard.getIngredients();
         viewHolder.steps =recipeDataCard.getSteps();
-        Log.d("RRROBIN RECIPEDATA", "  recipeDataCard.getImagePath() = " + recipeDataCard.getImagePath());
         viewHolder.imagePath = recipeDataCard.getImagePath();
         //viewHolder.image.setImageBitmap(BitmapFactory.decodeFile(recipeDataCard.getImagePath()));
         // Picasso.with(viewHolder.image.getContext()).setIndicatorsEnabled(true);
 
-        final Picasso picasso = new Picasso.Builder(viewHolder.image.getContext()).listener(new Picasso.Listener() {
-            @Override
-            public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
-                Log.d("RRROBIN ERROR", " MyCardAdapter Picasso printStackTrace");
-                //TODO: implement fallback when error occurs, also for the .load function below
-                exception.printStackTrace();
-            }
-        }).build();
+        Log.d("RRROBIN RECIPEDATA", " onBindViewHolder Picasso recipeDataCard.getImagePath() = "+recipeDataCard.getImagePath()+".");
+        if(recipeDataCard.getImagePath()!=null && !recipeDataCard.getImagePath().equals("")) {//TODO: is !TextUtils.isEmpty(recipeDataCard.getImagePath()) better?
+            final Picasso picasso = new Picasso.Builder(viewHolder.image.getContext()).listener(new Picasso.Listener() {
+                @Override
+                public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
+                    Log.d("RRROBIN ERROR", " MyCardAdapter Picasso printStackTrace");
+                    //TODO: implement fallback when error occurs, also for the .load function below
+                    exception.printStackTrace();
+                }
+            }).build();
 
-        final File picassoFile = new File(recipeDataCard.getImagePath());
-        picasso.with(viewHolder.image.getContext())
-                .setIndicatorsEnabled(true);
-        picasso.with(viewHolder.image.getContext())
-                .load(picassoFile)
-                .fit()
-                .centerCrop()
-                .into(viewHolder.image, new com.squareup.picasso.Callback() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d("RRROBIN RECIPEDATA", " ViewRecipeListActivity Picasso onSuccess");
-                    }
+            //TODO: what is better? load through URI, FIlE or simply the path itself?
+            final Uri recipeImageUri = Uri.parse(recipeDataCard.getImagePath());
+            final File picassoFile = new File(recipeDataCard.getImagePath());
+            picasso.with(viewHolder.image.getContext())
+                    .setIndicatorsEnabled(true);
+            picasso.with(viewHolder.image.getContext())
+                    .load(recipeImageUri)
+                    .fit()
+                    .centerCrop()
+                    .into(viewHolder.image, new com.squareup.picasso.Callback() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d("RRROBIN RECIPEDATA", " ViewRecipeListActivity Picasso onSuccess");
+                            if (mContext instanceof ViewRecipeListActivity) {
+                                ViewRecipeListActivity activity = (ViewRecipeListActivity) mContext;
+                                activity.closeDialog();
+                            }
+                        }
 
-                    @Override
-                    public void onError() {
-                        Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
-                        picasso.with(viewHolder.image.getContext()).load(picassoFile).into(viewHolder.image);//TODO: what if this errors!
-                    }
-                });
-/*
-        Picasso.Builder builder = new Picasso.Builder(viewHolder.image.getContext());
-        builder.indicatorsEnabled(true);
-        builder.loggingEnabled(true);
-        builder.listener(new Picasso.Listener() {
-            @Override
-            public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
-                Log.d("RRROBIN ERROR", "printStackTrace");
-                exception.printStackTrace();
-                //TODO: implement fallback when error occurs, also for the .load function below
-            }
-        });
-        builder.build().load(new File(recipeDataCard.getImagePath()))
-                .fit()
-                .centerCrop()
-                .into(viewHolder.image, new com.squareup.picasso.Callback() {
-                    @Override
-                    public void onSuccess() {
+                        @Override
+                        public void onError() {
+                            Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
+                            picasso.with(viewHolder.image.getContext()).load(recipeImageUri).into(viewHolder.image);//TODO: what if this errors!
+                        }
+                    });
 
-                    }
+        } else {
+            Picasso.with(viewHolder.image.getContext())
+                    .load(R.drawable.ic_error_black)//TODO: change to real placeholder & integrate into the above code
+                    .resize(24,24)
+                    .into(viewHolder.image);
 
-                    @Override
-                    public void onError() {
-                        Log.d("RRROBIN ERROR", "onerror");
-                    }
-                });
-        */
+        }
         if (mContext instanceof ViewRecipeListActivity) {
             ViewRecipeListActivity activity = (ViewRecipeListActivity) mContext;
             if(i==0 && activity.recipesSelectionType==activity.NEWEST_FROM_ADDRECIPE) {
@@ -141,6 +129,10 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
     public void addItem(RecipeDataCard recipeDataCard) {
         mItems.add(0, recipeDataCard);
         notifyItemInserted(0);
+    }
+
+    public void updateCard(int index) {
+        notifyItemChanged(index);
     }
 
     class CardViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {

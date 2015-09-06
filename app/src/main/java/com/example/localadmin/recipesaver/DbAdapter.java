@@ -26,6 +26,7 @@ import java.util.List;
  *                   distinction between recipe images (stored in separate table step table) and step images (path stored in step table)
  *
  * TODO: instead of saving full image paths, only save the image name and just look up the root for each activity?
+ * TODO: database should probably make use of prepared statements like in php, for security reasons and SQL injection..
  */
 public class DbAdapter {
 
@@ -185,6 +186,28 @@ public class DbAdapter {
     }
 
 
+    public String[] getRecipeNameArray(int[] recipeSelection) {
+
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        String query = "SELECT "+DbHelper.RECIPE_NAME+" FROM "+DbHelper.RECIPE_TABLE_NAME+" WHERE "+DbHelper.RECIPE_UID+" IN (" + makePlaceholders(recipeSelection.length) + ")";
+        String[] stringValues=Arrays.toString(recipeSelection).split("[\\[\\]]")[1].split(", ");
+        Cursor cursor = db.rawQuery(query, stringValues);
+
+
+        String[] recipeNames = new String[cursor.getCount()];
+        int i=0;
+        while (cursor.moveToNext()){
+            int index1 = cursor.getColumnIndex(DbHelper.RECIPE_NAME);
+            recipeNames[i] = cursor.getString(index1);
+            Log.d("RRROBIN RECIPEDATA", "  recipeNames[i] = "+recipeNames[i]);
+            i++;
+        }
+        cursor.close();
+        db.close();
+        return recipeNames;
+    }
+
+
     public String getRecipeImagePath(int index) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         String[] columns = {DbHelper.RECIPE_IMAGE_R_UID, DbHelper.RECIPE_IMAGE_PATH};
@@ -263,7 +286,7 @@ public class DbAdapter {
 
 
 
-    public String getRecipeData(int index) {
+    public String getRecipeNameAndIngredients(int index) {
         Log.d("RRROBIN RECIPEDATA", "recipe index "+index);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
@@ -312,9 +335,6 @@ public class DbAdapter {
         }
 
         //cursor = db.query(DbHelper.INGREDIENT_TABLE_NAME, columns, DbHelper.INGREDIENT_UID + " =?", selectionArgs, null, null, null);
-
-
-
         /*
         columns = new String[]{DbHelper.INGREDIENT_UID, DbHelper.INGREDIENT_NAME};
         selectionArgs=new String[]{String.valueOf(index)}; //TODO: meerdere indexes pakken
@@ -367,7 +387,7 @@ public class DbAdapter {
     static class DbHelper extends SQLiteOpenHelper {
 
         private static final String DATABASE_NAME = "RecipeDatabase";
-        private static final int DATABASE_VERSION = 6;
+        private static final int DATABASE_VERSION = 7;
 
         //recipes
         private static final String RECIPE_TABLE_NAME = "RECIPE_TABLE";
@@ -414,7 +434,7 @@ public class DbAdapter {
         private static final String RECIPE_IMAGE_TABLE_NAME = "RECIPE_IMAGE_TABLE";
         private static final String RECIPE_IMAGE_UID="_id";
         private static final String RECIPE_IMAGE_R_UID = "RecipeID";
-        private static final String RECIPE_IMAGE_PATH = "Path";
+        private static final String RECIPE_IMAGE_PATH = "ImagePath";
 
         private static final String RECIPE_IMAGE_CREATE_TABLE = "CREATE TABLE "+RECIPE_IMAGE_TABLE_NAME+" ("+
                 RECIPE_IMAGE_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+
@@ -429,14 +449,14 @@ public class DbAdapter {
         private static final String LINK_I_UID = "IngredientID";
         private static final String LINK_R_UID = "RecipeID";
         private static final String AMOUNT = "Amount";
-        private static final String VALUE_TYPE = "Value type";
+        private static final String VALUE_TYPE = "ValueType";
 
         private static final String LINK_CREATE_TABLE = "CREATE TABLE "+LINK_TABLE_NAME+" ("+
                 LINK_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+
                 LINK_I_UID+" INTEGER, "+
                 LINK_R_UID+" INTEGER, "+
                 AMOUNT+" INTEGER, "+
-                VALUE_TYPE+" VARCHAR(255));";
+                VALUE_TYPE+" VARCHAR(100));";
         private static final String LINK_DROP_TABLE = "DROP TABLE IF EXISTS "+LINK_TABLE_NAME;
 
 
@@ -445,7 +465,7 @@ public class DbAdapter {
 
         public DbHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
-            Log.d("RRROBIN DATABASE", " DbHelper DATABASE_NAME = "+DATABASE_NAME+", DATABASE_VERSION = "+DATABASE_VERSION);
+            Log.d("RRROBIN DATABASE", " DbHelper DATABASE_NAME = " + DATABASE_NAME + ", DATABASE_VERSION = " + DATABASE_VERSION);
             this.context = context;
             Toast.makeText(context, "DbAdapter Called",Toast.LENGTH_LONG).show();//TODO: remove
         }
@@ -467,7 +487,7 @@ public class DbAdapter {
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            Log.w(DbHelper.class.getName(),
+            Log.d("RRROBIN DATABASE",
                     "Upgrading database from version " + oldVersion + " to "
                             + newVersion + ", which will destroy all old data");
             try {

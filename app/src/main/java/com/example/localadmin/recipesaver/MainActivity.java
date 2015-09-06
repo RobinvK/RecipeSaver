@@ -3,7 +3,9 @@ package com.example.localadmin.recipesaver;
 /**
  * APP VERSION HISTORY
  *
- * Current version: V APP_1.01
+ * Current version: V APP_1.03 stable
+ * V APP_1.03 stable - 6-9-2015: Recipes are stored online and stored recipes can be read back. (including images)
+ * V APP_1.02 unstable - 12-8-2015: start of uploading recipes to online server
  * V APP_1.01 - 4-8-2015: you can now upload images to individual steps.
  * V APP_1.00 - 3-8-2015: first app version. Activities
  * AddRecipeActivity: add a title, an image from camera or gallery, steps and ingredients to your ingredient and save it
