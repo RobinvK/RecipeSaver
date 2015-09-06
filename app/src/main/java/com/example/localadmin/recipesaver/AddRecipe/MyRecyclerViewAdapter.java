@@ -95,6 +95,8 @@ public class MyRecyclerViewAdapter extends RecyclerView.Adapter<MyRecyclerViewAd
                             }
                         });
             } else {
+
+                Log.d("RRROBIN ERROR", " onBindViewHolder Picasso no image");
                 holder.stepImage.setImageDrawable(null);
                 ImageView imageView = holder.stepImage;
                 ViewGroup.LayoutParams params = (ViewGroup.LayoutParams) imageView.getLayoutParams();

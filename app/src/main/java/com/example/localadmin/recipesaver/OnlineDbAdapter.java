@@ -2,6 +2,7 @@ package com.example.localadmin.recipesaver;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -16,19 +17,31 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
  * Created on 7-8-2015.
  *
- * Last changed on 7-8-2015
- * Current version: V 1.00
+ * Last changed on 6-9-2015
+ * Current version: V 1.01
  *
  * changes:
+ * V1.01 - 6-9-2015: pDialog moved to ViewRecipeListActivity
  * V1.00 - 7-8-2015:
 
  * TODO: implement asynctask correctly, read up on it's usage
+ *
  */
 public class OnlineDbAdapter {
     private static String BASE_URL = "http://robinvankampen.nl/SecondConnectTest/";
@@ -40,19 +53,73 @@ public class OnlineDbAdapter {
     public static final String TAG_NAME = "name";
     public static final String TAG_STEPS = "steps";
     public static final String TAG_INGREDIENTS = "ingredients";
+    private static final String TAG_SERVER_PATH = "serverPath";
+    private static final String TAG_IMAGE_PATH = "imagePath";
 
-    public static final String INDEX = "index";
+    public static final String ADDITIONAL_RETURN_VARIABLE = "index";
     public static final String DB_RESPONSE = "DbResponse";
     public static final String DB_RETURNTYPE = "DbReturnType";
 
     public static final String RETURNTYPE_GET_NUMBER_OF_RECIPES = "getNumberOfRecipes";
     public static final String RETURNTYPE_GET_RECIPE_DATA = "getRecipeData";
     public static final String RETURNTYPE_GET_LAST_RECIPES = "getLastRecipes";
+    public static final String RETURNTYPE_UPLOAD_IMAGE = "uploadImage";
+    public static final String RETURNTYPE_INSERT_RECIPE = "insertRecipe";
+    public static final String RETURNTYPE_INSERT_STEPS = "insertSteps";
+    public static final String RETURNTYPE_INSERT_INGREDIENTS = "insertIngredients";
 
     JSONParser jsonParser;
 
     public OnlineDbAdapter() {
         jsonParser = new JSONParser();
+    }
+
+    //--------------SET FUNCTIONS----------------------
+    public void uploadImage(Context context, String action, String selectedImagePath, long recipeID) {
+        Log.d("RRROBIN RECIPEDATA", " uploadImage()");
+        HashMap<String, String> params = new HashMap<>();
+        params.put("selectedImagePath", selectedImagePath);
+        params.put("recipeID", String.valueOf(recipeID));
+        String url = BASE_URL+"UploadToServer.php";
+        String method = "POSTIMAGE";
+        new AsyncTaskClass(context, params, url, method, action, RETURNTYPE_UPLOAD_IMAGE).execute();
+    }
+
+    public void insertRecipe(Context context, String action, String name){
+        Log.d("RRROBIN RECIPEDATA", " insertRecipe()");
+        HashMap<String, String> params = new HashMap<>();
+        params.put("name", name);
+        String url = BASE_URL+"insert_recipe.php";
+        String method = "POST";
+        new AsyncTaskClass(context, params, url, method, action, RETURNTYPE_INSERT_RECIPE).execute();
+    }
+    public void insertIngredients(Context context, String action, String[] ingredients, long recipeID){
+        Log.d("RRROBIN RECIPEDATA", " insertIngredients()");
+        HashMap<String, String> params = new HashMap<>();
+        //TODO: doesn't filter doubles...
+        //TODO: carefull when implementing ValueType and amounts for ingredients. for ingredients without these variables the variables should be "" to prevent unsync in php arrays
+        params.put("recipeID", String.valueOf(recipeID));
+        for (int i = 0; i < ingredients.length; i++) {
+            Log.d("RRROBIN RECIPEDATA", " name["+i+"] = "+ingredients[i]);
+            params.put("names["+i+"]", ingredients[i]);
+        }
+        String url = BASE_URL+"insert_ingredients.php";
+        String method = "POST";
+        new AsyncTaskClass(context, params, url, method, action, RETURNTYPE_INSERT_INGREDIENTS).execute();
+    }
+
+    public void insertSteps(Context context, String action, String[] steps, long recipeID){
+        Log.d("RRROBIN RECIPEDATA", " insertSteps()");
+        HashMap<String, String> params = new HashMap<>();
+        //TODO: carefull when implementing imagepaths for steps. for steps without an image the imagepath should be "" to prevent unsync in php arrays
+        params.put("recipeID", String.valueOf(recipeID));
+        for (int i = 0; i < steps.length; i++) {
+            Log.d("RRROBIN RECIPEDATA", " Description["+i+"] = "+steps[i]);
+            params.put("Description["+i+"]", steps[i]);
+        }
+        String url = BASE_URL+"insert_steps.php";
+        String method = "POST";
+        new AsyncTaskClass(context, params, url, method, action, RETURNTYPE_INSERT_STEPS).execute();
     }
 
     //--------------PREPARE FUNCTIONS----------------------
@@ -78,6 +145,20 @@ public class OnlineDbAdapter {
     }
 
     //--------------GET FUNCTIONS----------------------
+
+     public long getRecipeID(String jsonObj){
+         long recipeID = 0;
+         try {
+             JSONObject json = new JSONObject(jsonObj);
+             recipeID = json.getLong(TAG_ID);
+         } catch (JSONException e) {
+             e.printStackTrace();
+             Log.d("RRROBIN ERROR", " getRecipeID getAllRecipesData, 1 e = " + e);
+         }
+         Log.d("RRROBIN RECIPEDATA", " recipeID = "+recipeID);
+         return recipeID;
+    }
+
     public int getNumberOfRecipes(String jsonObj) {
         Log.d("RRROBIN APP", " getNumberOfRecipes");
         int numberOfRecipes = 0;
@@ -88,12 +169,12 @@ public class OnlineDbAdapter {
                     numberOfRecipes = json.getInt("result");
                 } catch (JSONException e) {
                     e.printStackTrace();
-                    Log.d("RRROBIN ERROR", " getNumberOfRecipes, 1 e = " + e);
+                    Log.d("RRROBIN ERROR", " getNumberOfRecipes getNumberOfRecipes, 1 e = " + e);
                 }
             }
         } catch (JSONException e) {
             e.printStackTrace();
-            Log.d("RRROBIN ERROR", " getNumberOfRecipes, 2 e = " + e);
+            Log.d("RRROBIN ERROR", " getNumberOfRecipes getNumberOfRecipes, 2 e = " + e);
         }
         return numberOfRecipes;
     }
@@ -107,7 +188,7 @@ public class OnlineDbAdapter {
             recipeName = recipe.getString(TAG_NAME);
         } catch (JSONException e) {
             e.printStackTrace();
-            Log.d("RRROBIN ERROR", " getAllRecipesData, 1 e = " + e);
+            Log.d("RRROBIN ERROR", " getRecipeName getAllRecipesData, 1 e = " + e);
         }
         return recipeName;
     }
@@ -156,6 +237,19 @@ public class OnlineDbAdapter {
     }
 
 
+    public String getRecipeImagePath(String jsonObj) {
+        String imgPath = "";
+        try {
+            JSONObject json = new JSONObject(jsonObj);
+            JSONArray recipes = json.getJSONArray(TAG_RECIPE);
+            JSONObject recipe = recipes.getJSONObject(0);
+            imgPath = BASE_URL + "uploads/" +recipe.getString(TAG_IMAGE_PATH);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Log.d("RRROBIN ERROR", " getAllRecipesData, 1 e = " + e);
+        }
+        return imgPath;
+    }
     /*
 
         public ArrayList<HashMap<String, String>>  getRecipesData(String jsonObj) {
@@ -220,25 +314,27 @@ public class OnlineDbAdapter {
 
     }
 
-
-
-
-
-
-
-
-
+    public String getUploadImagePath(String jsonObj) {
+        String path = "";
+        try {
+            JSONObject json = new JSONObject(jsonObj);
+            path = json.getString(TAG_SERVER_PATH);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Log.d("RRROBIN ERROR", " getAllRecipesData, 1 e = " + e);
+        }
+        return path;
+    }
 
 
     class AsyncTaskClass extends AsyncTask<String, String, JSONObject> {
-        private ProgressDialog pDialog;
         private Context context;
         private String url;
         private String method;
         private HashMap<String, String> params;
         private String action;
         private String returnType;
-        private int cardAdapterIndex =-1;
+        private int additionalReturnVariable =-1;
 
         public AsyncTaskClass(Context context, HashMap<String, String> params, String url, String method, String action, String returnType) {
             super();
@@ -250,7 +346,7 @@ public class OnlineDbAdapter {
             this.returnType = returnType;
         }
 
-        public AsyncTaskClass(Context context, HashMap<String, String> params, String url, String method, String action, String returnType, int cardAdapterIndex) {
+        public AsyncTaskClass(Context context, HashMap<String, String> params, String url, String method, String action, String returnType, int additionalReturnVariable) {
             super();
             this.context = context;
             this.params = params;
@@ -258,18 +354,13 @@ public class OnlineDbAdapter {
             this.method = method;
             this.action = action;
             this.returnType = returnType;
-            this.cardAdapterIndex = cardAdapterIndex;
+            this.additionalReturnVariable = additionalReturnVariable;
         }
 
         @Override
         protected void onPreExecute() {
             Log.d("RRROBIN APP", " OnlineDbAdapter onPreExecute "+returnType);
             super.onPreExecute();
-            pDialog = new ProgressDialog(context);
-            pDialog.setMessage("Loading Recipes...");
-            pDialog.setIndeterminate(false);
-            pDialog.setCancelable(true);
-            pDialog.show();
         }
 
         protected JSONObject doInBackground(String... args) {
@@ -289,9 +380,7 @@ public class OnlineDbAdapter {
 
             int success = 0;
 
-            if (pDialog != null && pDialog.isShowing()) {
-                pDialog.dismiss();
-            }
+
 
             if (json != null) {
                 try {
@@ -311,9 +400,10 @@ public class OnlineDbAdapter {
                 Intent intent = new Intent(action);
                 intent.putExtra(DB_RESPONSE, json.toString());
                 intent.putExtra(DB_RETURNTYPE, returnType);
-                if(cardAdapterIndex>=0) {
-                    intent.putExtra(INDEX, cardAdapterIndex);
+                if(additionalReturnVariable>=0) {
+                    intent.putExtra(ADDITIONAL_RETURN_VARIABLE, additionalReturnVariable);
                 }
+                Log.d("RRROBIN APP", " context = " + context);
                 context.sendBroadcast(intent);
             }else{
                 //TODO

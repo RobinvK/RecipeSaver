@@ -3,10 +3,11 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 /**
  * Created on 22-6-2015.
  * <p>
- * Last changed on 4-8-2015
- * Current version: V 1.08
+ * Last changed on 6-9-2015
+ * Current version: V 1.09
  * <p>
  * changes:
+ * V1.09 - 6-9-2015: pDialog moved from OnlineDbAdapter to ViewRecipeListActivity, MyCardAdapter closes the dialog once picasso is done loading an image
  * V1.08 - 4-8-2015: improved Picasso implementation
  * if a step includes an image, for now show the path to that image
  * V1.07 - 3-8-2015: layout changes for opened recipe card
@@ -26,6 +27,7 @@ package com.example.localadmin.recipesaver.ViewRecipe;
  * TODO: aestethics: youtube.com     /watch?v=     cT5fsfGFFq8 effect
  */
 
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -51,18 +53,13 @@ import com.example.localadmin.recipesaver.ViewRecipe.FoldableItem.shading.Glance
 import com.example.localadmin.recipesaver.R;
 import com.squareup.picasso.Picasso;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 public class ViewRecipeListActivity extends AppCompatActivity {
 
     public static final int NEWEST = 1;
     public static final int NEWEST_FROM_ADDRECIPE = 2;
-    private static final String ACTION_FOR_INTENT_CALLBACK = "THIS_IS_A_UNIQUE_KEY_WE_USE_TO_COMMUNICATE";
+    private static final String ACTION_FOR_INTENT_CALLBACK = "ViewRecipeListActivity_Callback_Key";
 
     private View mListTouchInterceptor;
     private View mDetailsLayout;
@@ -82,6 +79,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
     private boolean isOnline = true;
 
+    private ProgressDialog pDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,6 +110,12 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
 
         if (isOnline) {
+            pDialog = new ProgressDialog(this);
+            pDialog.setMessage("Loading Recipes...");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(true);
+            pDialog.show();
+
             onlineDbHelper = new OnlineDbAdapter();
             // onlineDbHelper will retrieve the number of recipes from the online database through an asynctask.
             // Once completed a broadcast is send to this activity, which calls onlineDbHelper.getNumberOfRecipes,
@@ -140,7 +144,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                 createRecipeSelection();
             }
             else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RECIPE_DATA)){
-                int dbIndex = intent.getIntExtra(OnlineDbAdapter.INDEX, -1);
+                int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
                 Log.d("RRROBIN RECIPEDATA", " online recipe data dbIndex =: " + dbIndex);
 
 
@@ -151,6 +155,8 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                     recipeCard.setName(onlineDbHelper.getRecipeName(response));
                     recipeCard.setIngredients(onlineDbHelper.getRecipeIngredients(response));
                     recipeCard.setSteps(onlineDbHelper.getRecipeSteps(response));
+                    recipeCard.setImagePath(onlineDbHelper.getRecipeImagePath(response));
+                    recipeCard.setOnline(true);
                     mAdapter.addItem(recipeCard);
                 }
 
@@ -170,14 +176,20 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                 Log.d("RRROBIN RECIPEDATA", " online recipe data: "+stringBuilder.toString());
                 */
             }
+            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)){
+                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
+                Log.d("RRROBIN RECIPEDATA", " uploaded image path = "+onlineDbHelper.getUploadImagePath(response));
+
+            }
             else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_LAST_RECIPES)){
                 resortRecipeSelection(onlineDbHelper.getLastRecipes(response));
 
             }
             else{
                 //TODO
-                Log.d("RRROBIN ERROR", " returnType==OnlineDbAdapter.RETURNTYPE_GET_NUMBER_OF_RECIPES  returned false..., returnType = " + returnType);
+                Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
             }
+
         }
     };
 
@@ -247,6 +259,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                 recipeCard.setIngredients(dbHelper.getRecipeIngredients(recipeSelection[i]));
                 recipeCard.setSteps(dbHelper.getNumberedRecipeStepsWithPath(recipeSelection[i]));
                 recipeCard.setImagePath(dbHelper.getRecipeImagePath(recipeSelection[i]));
+                recipeCard.setOnline(false);
                 mAdapter.addItem(recipeCard);
             }
             mRecyclerView.setAdapter(mAdapter);
@@ -271,6 +284,9 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
         setFoldingListener(); //set listener for onUnfolding, onUnfolded, onFoldingBack and onFoldedBack for the full recipe view
         setScrollViewListener();//Update full recipe view's FoldableItemLayout with ScrollView's Scroll-position
+
+
+
     }
 
     //------------------EVENT LISTENERS----------------
@@ -332,6 +348,12 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             super.onBackPressed();
         }
     }
+    public void closeDialog() {
+        if (pDialog != null && pDialog.isShowing()) {
+            Log.d("RRROBIN APP", " pDialog != null && pDialog.isShowing()");
+            pDialog.dismiss();//TODO: dismiss when the first visible recipes are fully loaded.
+        }
+    }
 
     public void openDetails(View coverView, String recipeImagePath, TextView recipeTitle, String[] recipeIngredients, String[] recipeSteps) {
         final ImageView image = (ImageView) findViewById(R.id.details_image);
@@ -339,7 +361,8 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         TextView ingredients = (TextView) findViewById(R.id.ingredients_text);
         TextView steps = (TextView) findViewById(R.id.steps_text);
 
-        if(recipeImagePath!=null) {//TODO: is !TextUtils.isEmpty(recipeImagePath) better?
+        Log.d("RRROBIN RECIPEDATA", " openDetails Picasso recipeImagePath = "+recipeImagePath+".");
+        if(recipeImagePath!=null && !recipeImagePath.equals("")) {//TODO: is !TextUtils.isEmpty(recipeImagePath) better?
             final Picasso picasso = new Picasso.Builder(image.getContext()).listener(new Picasso.Listener() {
                 @Override
                 public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
@@ -349,11 +372,12 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                 }
             }).build();
 
+            final Uri recipeImageUri = Uri.parse(recipeImagePath);
             final File picassoFile = new File(recipeImagePath);
             picasso.with(image.getContext())
                     .setIndicatorsEnabled(true);
             picasso.with(image.getContext())
-                    .load(picassoFile)
+                    .load(recipeImageUri)
                     .fit()
                     .centerCrop()
                     .into(image, new com.squareup.picasso.Callback() {
@@ -365,40 +389,14 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                         @Override
                         public void onError() {
                             Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
-                            picasso.with(image.getContext()).load(picassoFile).into(image);//TODO: what if this errors!
+                            picasso.with(image.getContext())
+                                    .load(recipeImageUri)
+                                    .into(image);//TODO: what if this errors!
                         }
                     });
-
-           /* Picasso.with(image.getContext())
-                    .load(new File(recipeImagePath))
-                    .fit()
-                    .centerCrop()
-                    .into(image);
-
-            Picasso.Builder builder = new Picasso.Builder(image.getContext());
-            builder.listener(new Picasso.Listener() {
-                @Override
-                public void onImageLoadFailed(Picasso picasso, Uri uri, Exception exception) {
-                    Log.d("RRROBIN ERROR", "printStackTrace");
-                    exception.printStackTrace();
-                    //TODO: implement fallback when error occurs, also for the .load function below
-                }
-            });
-            builder.build().load(new File(recipeImagePath))
-                    .fit()
-                    .centerCrop()
-                    .into(image, new com.squareup.picasso.Callback() {
-                        @Override
-                        public void onSuccess() {
-
-                        }
-
-                        @Override
-                        public void onError() {
-                            Log.d("RRROBIN ERROR", "onerror");
-                        }
-                    });
-    */
+        }
+        else{
+            Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso no image");
         }
         StringBuilder builder = new StringBuilder();
         title.setText(recipeTitle.getText());

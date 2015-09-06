@@ -1,11 +1,13 @@
 package com.example.localadmin.recipesaver.AddRecipe;
 
 import android.annotation.TargetApi;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
@@ -33,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.localadmin.recipesaver.DbAdapter;
+import com.example.localadmin.recipesaver.OnlineDbAdapter;
 import com.example.localadmin.recipesaver.R;
 import com.example.localadmin.recipesaver.ViewRecipe.ViewRecipeListActivity;
 import com.squareup.picasso.Picasso;
@@ -76,10 +79,22 @@ public class AddRecipeActivity extends AppCompatActivity {
     private static final int PICK_STEP_IMAGE_REQUEST = 2;
     private String selectedImagePath = "N/A";
 
+    //public so they can be easily inserted in the online DB
+    private String coverImagePath = "N/A";
+    private String[] ingredients;
+    private String[] steps;
+    private int requiredUploads;
+    private long onlineRecipeID;
+
     private File root;
     private Uri outputFileUri = null;
 
     private int selectedStepIndex = 0;
+
+    private OnlineDbAdapter onlineDbHelper;
+    private boolean isOnline = true;
+
+    private static final String ACTION_FOR_INTENT_CALLBACK = "AddRecipeActivity_Callback_Key";
 
 
     @Override
@@ -87,6 +102,11 @@ public class AddRecipeActivity extends AppCompatActivity {
         Log.d("RRROBIN APP", "AddRecipeActivity onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_recipe);
+
+
+        if (isOnline) {
+            onlineDbHelper = new OnlineDbAdapter();
+        }
         dbHelper = new DbAdapter(this);
 
         if (savedInstanceState != null) {
@@ -153,6 +173,10 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN RECIPEDATA", "stepData == null");
         }
 
+        if (savedInstanceState.containsKey("requiredUploads")) {
+            requiredUploads = savedInstanceState.getInt("requiredUploads");
+            Log.d("RRROBIN APP", "AddRecipeActivity getSavedData requiredUploads = " + requiredUploads);
+        }
         if (savedInstanceState.containsKey("selectedStepIndex")) {
             selectedStepIndex = savedInstanceState.getInt("selectedStepIndex");
             Log.d("RRROBIN APP", "AddRecipeActivity getSavedData selectedStepIndex = " + selectedStepIndex);
@@ -180,6 +204,7 @@ public class AddRecipeActivity extends AppCompatActivity {
         stepData = stepListAdapter.getDataSet();
         outState.putParcelableArrayList("myStepData", stepData);
         outState.putInt("selectedStepIndex", selectedStepIndex);
+        outState.putInt("requiredUploads", requiredUploads);
 
         if (outputFileUri != null) {
             outState.putString("cameraImageUri", outputFileUri.toString());
@@ -223,22 +248,28 @@ public class AddRecipeActivity extends AppCompatActivity {
     }
 
     public void addRecipe(View view) {
+
+        //TODO: first check if there are actually steps and ingredients on forehand..
         Log.d("RRROBIN RECIPEDATA", "addRecipe start");
         EditText titleTextField = (EditText) findViewById(R.id.edit_text_recipe_title);
         String title = titleTextField.getText().toString().trim();
 
+
+        // add recipe to phone Database
         if (title.equals("") || title.equals(" ")) {
             Toast.makeText(this, "Please add a title", Toast.LENGTH_LONG).show();//TODO: improve UI
             return;
         }
+        //offline
         long recipeID = dbHelper.insertRecipe(title);
+
         if (recipeID < 0) {
             Log.d("RRROBIN ERROR", "addRecipe Something went wrong, recipe " + recipeID + " was not saved");
         } else {
             Log.d("RRROBIN RECIPEDATA", "addRecipe recipe " + title + " added at " + recipeID + ".");
 
             //-------Add ingredients---------
-            String[] ingredients = ingredientListAdapter.getData();
+            ingredients = ingredientListAdapter.getData();
 
             if (ingredients.length == 0) {
                 Toast.makeText(this, "Please add at least one ingredient", Toast.LENGTH_LONG).show();//TODO: improve UI
@@ -267,7 +298,7 @@ public class AddRecipeActivity extends AppCompatActivity {
 
             //-------Add steps---------
 
-            String steps[] = stepListAdapter.getData();
+            steps = stepListAdapter.getData();
             String[] localStepImagePaths = stepListAdapter.getImagePaths();
 
             if (steps.length == 0) {
@@ -303,21 +334,83 @@ public class AddRecipeActivity extends AppCompatActivity {
             } else {
                 Bitmap recipeImage = BitmapFactory.decodeFile(selectedImagePath);
 
-                String imagePath = SaveImage(recipeImage, title, 75);
+                coverImagePath = SaveImage(recipeImage, title, 75);
 
-                if (imagePath.equals("N/A")) {
+                if (coverImagePath.equals("N/A")) {
                     Log.d("RRROBIN ERROR", " addRecipe, image not saved ");
                 } else {
-                    Log.d("RRROBIN RECIPEDATA", " addRecipe, image for recipe " + recipeID + " added to DB @ " + dbHelper.insertRecipeImage(recipeID, imagePath) + ".");
+                    Log.d("RRROBIN RECIPEDATA", " addRecipe, image for recipe " + recipeID + " added to DB @ " + dbHelper.insertRecipeImage(recipeID, coverImagePath) + ".");
+
                 }
             }
 
-            Intent intent = new Intent(this, ViewRecipeListActivity.class);
-            intent.putExtra("ADDED_RECIPE", recipeID); //Your id
-            startActivity(intent);//TODO:preload images in ViewRecipeListActivity
+            requiredUploads=1;
+            onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title);
+
         }
     }
 
+    private void startAddRecipeActivity(long recipeID){
+        Intent intent = new Intent(this, ViewRecipeListActivity.class);
+        intent.putExtra("ADDED_RECIPE", recipeID); //Your id
+        startActivity(intent);//TODO:preload images in ViewRecipeListActivity
+    }
+
+    private BroadcastReceiver receiver = new BroadcastReceiver()
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            Log.d("RRROBIN APP", " BroadcastReceiver onReceive");
+            String response = intent.getStringExtra(OnlineDbAdapter.DB_RESPONSE);
+            String returnType = intent.getStringExtra(OnlineDbAdapter.DB_RETURNTYPE);
+
+            if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_RECIPE)){
+                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_RECIPE");
+                onlineRecipeID = onlineDbHelper.getRecipeID(response);
+                if(onlineRecipeID>0) {
+                    onlineDbHelper.insertIngredients(context, ACTION_FOR_INTENT_CALLBACK, ingredients, onlineRecipeID);
+                    onlineDbHelper.insertSteps(context, ACTION_FOR_INTENT_CALLBACK, steps, onlineRecipeID);
+                    requiredUploads = 2;
+                    if (!coverImagePath.equals("N/A")) {
+                        requiredUploads++;
+                        onlineDbHelper.uploadImage(context, ACTION_FOR_INTENT_CALLBACK, coverImagePath, onlineRecipeID);
+                    }
+                }
+                else{
+
+                    Log.d("RRROBIN ERROR", " something went wrong with the recipe upload to online DB");
+                }
+            }
+            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)){
+                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
+                Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
+                requiredUploads--;
+            }
+            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_STEPS)){
+                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_STEPS");
+                requiredUploads--;
+            }
+            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_INGREDIENTS)){
+                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_INGREDIENTS");
+                requiredUploads--;
+            }
+            else{
+                //TODO
+                Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
+            }
+
+            if(requiredUploads==0){
+                if(onlineRecipeID!=-1){
+                    startAddRecipeActivity(onlineRecipeID);
+                }
+                else{
+                    //TODO:is this scenario even possible?...
+                }
+            }
+
+        }
+    };
     private String SaveImage(Bitmap finalBitmap, String title, int quality) {
         //TODO: more effective image saving library? also reduce the size of the image?
         File myFile;
@@ -683,7 +776,18 @@ public class AddRecipeActivity extends AppCompatActivity {
         return "com.google.android.apps.photos.content".equals(uri.getAuthority());
     }
 
+    @Override //for BroadcastReceiver
+    public void onResume() {
+        super.onResume();
+        this.registerReceiver(receiver, new IntentFilter(ACTION_FOR_INTENT_CALLBACK));
+    }
 
+    @Override //for BroadcastReceiver
+    public void onPause()
+    {
+        super.onPause();
+        this.unregisterReceiver(receiver);
+    }
 
 
 }

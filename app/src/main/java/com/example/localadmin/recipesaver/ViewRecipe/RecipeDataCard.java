@@ -21,6 +21,14 @@ public class RecipeDataCard {
     private String mimagePath;
     private int mThumbnail;
 
+    private Boolean isOnline;
+
+    public Boolean getOnline() {
+        return isOnline;
+    }
+    public void setOnline(Boolean online) {
+        this.isOnline = online;
+    }
     public long getIndex() {
         return mrecipeIndex;
     }

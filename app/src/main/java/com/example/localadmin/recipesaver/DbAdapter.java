@@ -387,7 +387,7 @@ public class DbAdapter {
     static class DbHelper extends SQLiteOpenHelper {
 
         private static final String DATABASE_NAME = "RecipeDatabase";
-        private static final int DATABASE_VERSION = 6;
+        private static final int DATABASE_VERSION = 7;
 
         //recipes
         private static final String RECIPE_TABLE_NAME = "RECIPE_TABLE";
@@ -434,7 +434,7 @@ public class DbAdapter {
         private static final String RECIPE_IMAGE_TABLE_NAME = "RECIPE_IMAGE_TABLE";
         private static final String RECIPE_IMAGE_UID="_id";
         private static final String RECIPE_IMAGE_R_UID = "RecipeID";
-        private static final String RECIPE_IMAGE_PATH = "Path";
+        private static final String RECIPE_IMAGE_PATH = "ImagePath";
 
         private static final String RECIPE_IMAGE_CREATE_TABLE = "CREATE TABLE "+RECIPE_IMAGE_TABLE_NAME+" ("+
                 RECIPE_IMAGE_UID+" INTEGER PRIMARY KEY AUTOINCREMENT, "+

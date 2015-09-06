@@ -8,11 +8,14 @@ import org.json.JSONObject;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -48,7 +51,7 @@ public class JSONParser {
             i++;
         }
 
-        if (method.equals("POST")) {
+        if (method.equals("POST") || method.equals("POSTIMAGE")) {
             // request method is POST
             try {
                 urlObj = new URL(url);
@@ -59,22 +62,95 @@ public class JSONParser {
 
                 conn.setRequestMethod("POST");
 
-                conn.setRequestProperty("Accept-Charset", charset);
 
-                conn.setReadTimeout(10000);
-                conn.setConnectTimeout(15000);
+                if(method.equals("POST")){
+                    conn.setRequestProperty("Accept-Charset", charset);
+                    conn.setReadTimeout(10000);
+                    conn.setConnectTimeout(15000);
+                    conn.connect();
 
-                conn.connect();
+                    paramsString = sbParams.toString();
 
-                paramsString = sbParams.toString();
+                    wr = new DataOutputStream(conn.getOutputStream());
+                    wr.writeBytes(paramsString);
+                }
+                else if(method.equals("POSTIMAGE")){//upload image
+                    String boundary = "*****";
+                    String lineEnd = "\r\n";
+                    String twoHyphens = "--";
+                    int bytesRead, bytesAvailable, bufferSize;
+                    byte[] buffer;
+                    int maxBufferSize = 1 * 1024 * 1024;
+                    int serverResponseCode = 0;
 
-                wr = new DataOutputStream(conn.getOutputStream());
-                wr.writeBytes(paramsString);
+                    if(params.get("selectedImagePath")!=null && params.get("selectedImagePath")!="" && params.get("recipeID")!=null && params.get("recipeID")!="") {
+                        String selectedImagePath = params.get("selectedImagePath");
+
+                        conn.setDoInput(true); // Allow Inputs
+                        conn.setRequestProperty("Connection", "Keep-Alive");
+                        conn.setRequestProperty("ENCTYPE", "multipart/form-data");
+                        conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+                        conn.setRequestProperty("uploaded_file", selectedImagePath);
+                        conn.connect();
+                        wr = new DataOutputStream(conn.getOutputStream());
+                        wr.writeBytes(twoHyphens + boundary + lineEnd);
+
+
+                        wr.writeBytes("Content-Disposition: form-data; name=\"recipeID\"" + lineEnd);
+                        wr.writeBytes(lineEnd);
+                        wr.writeBytes(params.get("recipeID"));
+                        wr.writeBytes(lineEnd);
+                        wr.writeBytes(twoHyphens + boundary + lineEnd);
+
+                        wr.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
+                                + selectedImagePath + "\"" + lineEnd);
+
+                        wr.writeBytes(lineEnd);
+
+                        FileInputStream fileInputStream = new FileInputStream(new File(selectedImagePath));
+                        bytesAvailable = fileInputStream.available();
+
+                        bufferSize = Math.min(bytesAvailable, maxBufferSize);
+                        buffer = new byte[bufferSize];
+
+                        // read file and write it into form...
+                        bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+
+                        while (bytesRead > 0) {
+
+                            wr.write(buffer, 0, bufferSize);
+                            bytesAvailable = fileInputStream.available();
+                            bufferSize = Math.min(bytesAvailable, maxBufferSize);
+                            bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+
+                        }
+                        wr.writeBytes(lineEnd);
+                        wr.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+                        serverResponseCode = conn.getResponseCode();
+                        if (serverResponseCode == 200) {
+                            Log.d("RRROBIN RECIPEDATA", "File Upload Complete.");
+                        } else {
+                            //TODO
+                        }
+                        fileInputStream.close();
+                    }
+                    else{
+                        //TODO: no path...
+                    }
+                }
+
                 wr.flush();
                 wr.close();
 
+
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            catch (Exception e) {//for image upload exceptions
+                Log.d("RRROBIN ERROR", "Got Exception : see logcat  e " + e);
+                e.printStackTrace();
+
+                Log.d("RRROBIN ERROR", " Upload file to server Exception Exception : " + e.getMessage(), e);
             }
         }
         else if(method.equals("GET")){
