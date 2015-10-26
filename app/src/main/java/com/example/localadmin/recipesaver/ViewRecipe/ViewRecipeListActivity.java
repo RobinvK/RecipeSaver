@@ -2,11 +2,12 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 
 /**
  * Created on 22-6-2015.
- * <p>
- * Last changed on 6-9-2015
- * Current version: V 1.09
- * <p>
+ *
+ * Last changed on 14-10-2015
+ * Current version: V 1.10
+ *
  * changes:
+ * V1.10 - 14-10-2015: Broadcast onReceive now checks if the php code returned a successful query
  * V1.09 - 6-9-2015: pDialog moved from OnlineDbAdapter to ViewRecipeListActivity, MyCardAdapter closes the dialog once picasso is done loading an image
  * V1.08 - 4-8-2015: improved Picasso implementation
  * if a step includes an image, for now show the path to that image
@@ -137,36 +138,37 @@ public class ViewRecipeListActivity extends AppCompatActivity {
             Log.d("RRROBIN APP", " BroadcastReceiver onReceive");
             String response = intent.getStringExtra(OnlineDbAdapter.DB_RESPONSE);
             String returnType = intent.getStringExtra(OnlineDbAdapter.DB_RETURNTYPE);
+            int success = intent.getIntExtra(OnlineDbAdapter.DB_SUCCESS, 0);
 
-            if(returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_NUMBER_OF_RECIPES)){
-                numberOfRecipes = onlineDbHelper.getNumberOfRecipes(response);
-                Log.d("RRROBIN RECIPEDATA", " online numberOfRecipes = " + numberOfRecipes);
-                createRecipeSelection();
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RECIPE_DATA)){
-                int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
-                Log.d("RRROBIN RECIPEDATA", " online recipe data dbIndex =: " + dbIndex);
+            if(success==1) {
+                if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_NUMBER_OF_RECIPES)) {
+                    numberOfRecipes = onlineDbHelper.getNumberOfRecipes(response);
+                    Log.d("RRROBIN RECIPEDATA", " online numberOfRecipes = " + numberOfRecipes);
+                    createRecipeSelection();
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RECIPE_DATA)) {
+                    int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
+                    Log.d("RRROBIN RECIPEDATA", " online recipe data dbIndex =: " + dbIndex);
 
 
-                if(dbIndex>=0){
-                    Log.d("RRROBIN RECIPEDATA", " added name =: " + onlineDbHelper.getRecipeName(response));
-                    RecipeDataCard recipeCard = new RecipeDataCard();
-                    recipeCard.setIndex(dbIndex);
-                    recipeCard.setName(onlineDbHelper.getRecipeName(response));
-                    recipeCard.setIngredients(onlineDbHelper.getRecipeIngredients(response));
-                    recipeCard.setSteps(onlineDbHelper.getRecipeSteps(response));
-                    recipeCard.setImagePath(onlineDbHelper.getRecipeImagePath(response));
-                    recipeCard.setOnline(true);
-                    mAdapter.addItem(recipeCard);
-                }
+                    if (dbIndex >= 0) {
+                        Log.d("RRROBIN RECIPEDATA", " added name =: " + onlineDbHelper.getRecipeName(response));
+                        RecipeDataCard recipeCard = new RecipeDataCard();
+                        recipeCard.setIndex(dbIndex);
+                        recipeCard.setName(onlineDbHelper.getRecipeName(response));
+                        recipeCard.setIngredients(onlineDbHelper.getRecipeIngredients(response));
+                        recipeCard.setSteps(onlineDbHelper.getRecipeSteps(response));
+                        recipeCard.setImagePath(onlineDbHelper.getRecipeImagePath(response));
+                        recipeCard.setOnline(true);
+                        mAdapter.addItem(recipeCard);
+                    }
 
-                Log.d("RRROBIN RECIPEDATA", " mAdapter.mItems.size() = "+mAdapter.mItems.size());
-                if(mAdapter.mItems.size()==numberOfRecipes){
-                    Log.d("RRROBIN RECIPEDATA", " added enough cards");
-                    mRecyclerView.setAdapter(mAdapter);
+                    Log.d("RRROBIN RECIPEDATA", " mAdapter.mItems.size() = " + mAdapter.mItems.size());
+                    if (mAdapter.mItems.size() == numberOfRecipes) {
+                        Log.d("RRROBIN RECIPEDATA", " added enough cards");
+                        mRecyclerView.setAdapter(mAdapter);
 
-                    setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
-                }
+                        setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
+                    }
               /*  ArrayList<HashMap<String, String>> recipesList = onlineDbHelper.getAllRecipesData(response);
                 StringBuilder stringBuilder = new StringBuilder();
                 for (int i = 0; i < recipesList.size(); i++) {
@@ -175,19 +177,21 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
                 Log.d("RRROBIN RECIPEDATA", " online recipe data: "+stringBuilder.toString());
                 */
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)){
-                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
-                Log.d("RRROBIN RECIPEDATA", " uploaded image path = "+onlineDbHelper.getUploadImagePath(response));
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
+                    Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
 
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_LAST_RECIPES)){
-                resortRecipeSelection(onlineDbHelper.getLastRecipes(response));
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_LAST_RECIPES)) {
+                    resortRecipeSelection(onlineDbHelper.getLastRecipes(response));
 
+                } else {
+                    //TODO
+                    Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
+                }
             }
             else{
                 //TODO
-                Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
+                Log.d("RRROBIN ERROR", "  no success " );
             }
 
         }
@@ -372,8 +376,8 @@ public class ViewRecipeListActivity extends AppCompatActivity {
                 }
             }).build();
 
-            final Uri recipeImageUri = Uri.parse(recipeImagePath);
-            final File picassoFile = new File(recipeImagePath);
+            final Uri recipeImageUri = Uri.parse(recipeImagePath.replace(" ", "%20"));//TODO: now only the space special character is caught, what if there are other special characters!?
+            final File picassoFile = new File(recipeImagePath);//TODO URI or File?
             picasso.with(image.getContext())
                     .setIndicatorsEnabled(true);
             picasso.with(image.getContext())
@@ -388,7 +392,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
                         @Override
                         public void onError() {
-                            Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror");
+                            Log.d("RRROBIN ERROR", " ViewRecipeListActivity Picasso onerror1");
                             picasso.with(image.getContext())
                                     .load(recipeImageUri)
                                     .into(image);//TODO: what if this errors!
