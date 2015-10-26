@@ -37,16 +37,21 @@ public class DbAdapter {
     }
 
     //INSERT
-    public long insertRecipe(String name, String description, String link){
+    public long insertRecipe(String name, String description, String owner){
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put(DbHelper.RECIPE_NAME, name);
-        contentValues.put(DbHelper.RECIPE_DESCRIPTION, description);
-        contentValues.put(DbHelper.RECIPE_LINK, link);
+        if(!description.equals("")){
+            contentValues.put(DbHelper.RECIPE_DESCRIPTION, description);
+        }
+        if(!owner.equals("") || !owner.equals("N/A")){
+            contentValues.put(DbHelper.RECIPE_OWNER, owner);
+        }
         long insertPos = db.insert(DbHelper.RECIPE_TABLE_NAME, null, contentValues);
         db.close();
         return(insertPos);
     }
+
 
     public long insertRecipe(String name){
         SQLiteDatabase db = dbHelper.getWritableDatabase();

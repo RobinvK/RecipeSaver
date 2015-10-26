@@ -3,6 +3,8 @@
 
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="title_activity_login">Login</string>
+    <string name="title_activity_signup">Signup</string>
     <string name="title_activity_add_recipe">Add recipe</string>
     <string name="title_activity_view_recipe_list">View recipe list</string>
     <string name="drawer_open">Open</string>
@@ -18,4 +20,6 @@
     <string name="lblBtnAddStep">Add Step</string>
     <string name="year">Year</string>
     <string name="location">Location</string>
+    <string name="title_activity_log_in">Log in</string>
+    <string name="title_activity_sign_up">Sign up</string>
 </resources>

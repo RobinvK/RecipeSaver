@@ -3,7 +3,9 @@ package com.example.localadmin.recipesaver;
 /**
  * APP VERSION HISTORY
  *
- * Current version: V APP_1.03 stable
+ * Current version: V APP_1.05
+ * V APP_1.05  - 26-10-2015: Full implementation of Login and Signup options, including dedicated activities and online functionalities.
+ * V APP_1.04  - 14-9-2015: Addition of login and sign up options in drawer menu
  * V APP_1.03 stable - 6-9-2015: Recipes are stored online and stored recipes can be read back. (including images)
  * V APP_1.02 unstable - 12-8-2015: start of uploading recipes to online server
  * V APP_1.01 - 4-8-2015: you can now upload images to individual steps.
@@ -16,10 +18,11 @@ package com.example.localadmin.recipesaver;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 15-7-2015
- * Current version: V 1.0
+ * Last changed on 23-10-2015
+ * Current version: V 1.01
  *
  * changes:
+ * V1.01 - 23-10-2015: Added log in/sign up buttons
  *
  */
 
@@ -58,11 +61,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int mSelectedId;
     private boolean mUserSawDrawer = false;
 
+    private boolean userLoggedIn = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d("RRROBIN APP", "*----------------------------------------START------------------------------------*");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //set username in drawer header welcome
+        SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
+        Boolean loggedIn = sharedPreferences.getBoolean("LoggedIn", false);
+        String userName = sharedPreferences.getString("UserName",DEFAULT_PREFERENCE_VALUE);
+        Log.d("RRROBIN APP", "  userName: " + userName+"  loggedIn: " + loggedIn);
+        if(!userName.equals(DEFAULT_PREFERENCE_VALUE) && loggedIn==true){
+            TextView welcomeField = (TextView)findViewById(R.id.header_username);
+            welcomeField.setText("Welcome " + userName + "!");
+            userLoggedIn=true;
+        }
+        else{
+            //TODO register / login options  should not be required, just preffered
+        }
 
         createToolbar();
         createNavigationDrawer();
@@ -82,13 +101,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mDrawerLayout.setDrawerListener(mDrawerToggle);
         mDrawerToggle.syncState();
 
-
-        //set username in drawer header welcome
-        SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
-        String userName = sharedPreferences.getString("UserName",DEFAULT_PREFERENCE_VALUE);
-        if(!userName.equals(DEFAULT_PREFERENCE_VALUE)){
-            TextView welcomeField = (TextView)findViewById(R.id.header_username);
-            welcomeField.setText("Welcome "+userName+"!");
+        if(userLoggedIn){
+            mDrawer.getMenu().findItem(R.id.drawer_activity_log_in).setVisible(false);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(true);
+        }
+        else{
+            mDrawer.getMenu().findItem(R.id.drawer_activity_log_in).setVisible(true);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(false);
         }
 
         if(!didUserSeeDrawer()){
@@ -103,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         //mSelectedId = (if statement) ? (if statement true so mSelectedId is this) : (else, if statement false so mSelectedId is this)
        // mSelectedId = savedInstanceState == null ? -1 : savedInstanceState.getInt(SELECTED_ITEM_ID);
     }
+
 
     private boolean didUserSeeDrawer(){
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -159,11 +179,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    public void clickedSecondActivityButton(View view) {
+    public void clickedViewRecipesButton(View view) {
         if(mDrawerLayout.isDrawerOpen(mDrawer)){
             mDrawerLayout.closeDrawer(GravityCompat.START);
         }
         Intent intent = new Intent(this, AddRecipeActivity.class);
+        startActivity(intent);
+    }
+    public void clickedSignupButton(View view) {
+        if(mDrawerLayout.isDrawerOpen(mDrawer)){
+            mDrawerLayout.closeDrawer(GravityCompat.START);
+        }
+        Intent intent = new Intent(this, SignupActivity.class);
+        startActivity(intent);
+    }
+    public void clickedLoginButton(View view) {
+        if(mDrawerLayout.isDrawerOpen(mDrawer)){
+            mDrawerLayout.closeDrawer(GravityCompat.START);
+        }
+        Intent intent = new Intent(this, LoginActivity.class);
         startActivity(intent);
     }
 
@@ -177,18 +211,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 mDrawerLayout.closeDrawer(GravityCompat.START);
                 intent = new Intent(this, ViewRecipeListActivity.class);
                 startActivity(intent);
+            }else if (mSelectedId == R.id.drawer_activity_log_in) {
+                mDrawerLayout.closeDrawer(GravityCompat.START);
+                intent = new Intent(this, LoginActivity.class);
+                startActivity(intent);
+            }
+            else if (mSelectedId == R.id.drawer_activity_sign_up) {
+                mDrawerLayout.closeDrawer(GravityCompat.START);
+                intent = new Intent(this, LoginActivity.class);
+                startActivity(intent);
             }
 
     }
 
     //------------------NOT YET IMPLEMENTED----------------
-
-    private void setUserName(){
-        SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString("Username", "default username");
-        editor.apply();
-    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

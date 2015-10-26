@@ -11,6 +11,14 @@
             android:id="@+id/drawer_activity_view_recipe_list"
             android:icon="@drawable/ic_error_black"
             android:title="@string/title_activity_view_recipe_list" />
+        <item
+            android:id="@+id/drawer_activity_log_in"
+            android:icon="@drawable/ic_star_black"
+            android:title="@string/title_activity_log_in" />
+        <item
+            android:id="@+id/drawer_activity_sign_up"
+            android:icon="@drawable/ic_star_black"
+            android:title="@string/title_activity_sign_up" />
 
     </group>
 

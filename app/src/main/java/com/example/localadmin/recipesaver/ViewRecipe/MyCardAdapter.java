@@ -74,8 +74,8 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
             }).build();
 
             //TODO: what is better? load through URI, FIlE or simply the path itself?
-            final Uri recipeImageUri = Uri.parse(recipeDataCard.getImagePath());
-            final File picassoFile = new File(recipeDataCard.getImagePath());
+            final Uri recipeImageUri = Uri.parse(recipeDataCard.getImagePath().replace(" ", "%20"));//TODO: now only the space special character is caught, what if there are other special characters!?
+            final File picassoFile = new File(recipeDataCard.getImagePath());//TODO URI or File?
             picasso.with(viewHolder.image.getContext())
                     .setIndicatorsEnabled(true);
             picasso.with(viewHolder.image.getContext())

@@ -8,6 +8,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
@@ -50,10 +51,12 @@ import java.util.Random;
 
 /**
  * Created on 22-6-2015.
- * Last changed on 8-8-2015
- * Current version: V 1.08
- * <p/>
+ *
+ * Last changed on 14-10-2015
+ * Current version: V 1.09
+ *
  * changes:
+ * V1.09 - 14-10-2015: Broadcast onReceive now checks if the php code returned a successful query
  * V1.08 - 4-8-2015: General optimization and picasso bugfix due to orientation change. Removal of onRestoreInstanceState function
  * V1.07 - 4-8-2015: ability to add pictures to steps
  * V1.06 - 3-8-2015: back to Picasso 2.5.2 due to problems with taking camera pictures and adding them to the imageview
@@ -66,6 +69,7 @@ import java.util.Random;
  * <p/>
  * TODO: update for most stable Picasso build. Problems with evy's uitnodiging in gallery/downloads (likely due to .fit or .centercrop) and problems with taking camera pictures and adding them to the imageview in combination with orietnation changes
  * TODO: image is now saved in documents and in gallery/recipesaver folder, is there a way to cache the image after taking a picture? or remove from documents after saving in gallery/recipesaver folder?
+ * TODO: image name should be checked for strange characters to avoid difficulties in picasso.
  */
 public class AddRecipeActivity extends AppCompatActivity {
     DbAdapter dbHelper;
@@ -75,6 +79,7 @@ public class AddRecipeActivity extends AppCompatActivity {
     ArrayList<DataObject> ingredientData = null;
     ArrayList<DataObject> stepData = null;
 
+    private static final String DEFAULT_PREFERENCE_VALUE = "N/A";
     private static final int PICK_COVER_IMAGE_REQUEST = 1;
     private static final int PICK_STEP_IMAGE_REQUEST = 2;
     private String selectedImagePath = "N/A";
@@ -94,6 +99,8 @@ public class AddRecipeActivity extends AppCompatActivity {
     private OnlineDbAdapter onlineDbHelper;
     private boolean isOnline = true;
 
+    private String userName = "";
+
     private static final String ACTION_FOR_INTENT_CALLBACK = "AddRecipeActivity_Callback_Key";
 
 
@@ -103,6 +110,9 @@ public class AddRecipeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_recipe);
 
+
+        SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
+        userName = sharedPreferences.getString("UserName",DEFAULT_PREFERENCE_VALUE);
 
         if (isOnline) {
             onlineDbHelper = new OnlineDbAdapter();
@@ -261,7 +271,13 @@ public class AddRecipeActivity extends AppCompatActivity {
             return;
         }
         //offline
-        long recipeID = dbHelper.insertRecipe(title);
+        long recipeID;
+        if(!userName.equals(DEFAULT_PREFERENCE_VALUE)) {
+            recipeID = dbHelper.insertRecipe(title,"",userName);
+        }
+        else{
+            recipeID = dbHelper.insertRecipe(title);
+        }
 
         if (recipeID < 0) {
             Log.d("RRROBIN ERROR", "addRecipe Something went wrong, recipe " + recipeID + " was not saved");
@@ -344,8 +360,16 @@ public class AddRecipeActivity extends AppCompatActivity {
                 }
             }
 
-            requiredUploads=1;
-            onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title);
+            if (isOnline) {
+                requiredUploads = 1;
+                if(!userName.equals(DEFAULT_PREFERENCE_VALUE)) {
+                    onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title, "", userName);
+                }
+                else{
+                    onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title);
+                }
+
+            }
 
         }
     }
@@ -364,40 +388,42 @@ public class AddRecipeActivity extends AppCompatActivity {
             Log.d("RRROBIN APP", " BroadcastReceiver onReceive");
             String response = intent.getStringExtra(OnlineDbAdapter.DB_RESPONSE);
             String returnType = intent.getStringExtra(OnlineDbAdapter.DB_RETURNTYPE);
+            int success = intent.getIntExtra(OnlineDbAdapter.DB_SUCCESS, 0);
 
-            if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_RECIPE)){
-                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_RECIPE");
-                onlineRecipeID = onlineDbHelper.getRecipeID(response);
-                if(onlineRecipeID>0) {
-                    onlineDbHelper.insertIngredients(context, ACTION_FOR_INTENT_CALLBACK, ingredients, onlineRecipeID);
-                    onlineDbHelper.insertSteps(context, ACTION_FOR_INTENT_CALLBACK, steps, onlineRecipeID);
-                    requiredUploads = 2;
-                    if (!coverImagePath.equals("N/A")) {
-                        requiredUploads++;
-                        onlineDbHelper.uploadImage(context, ACTION_FOR_INTENT_CALLBACK, coverImagePath, onlineRecipeID);
+            if(success==1) {
+                if (returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_RECIPE)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_RECIPE");
+                    onlineRecipeID = onlineDbHelper.getRecipeID(response);
+                    if (onlineRecipeID > 0) {
+                        onlineDbHelper.insertIngredients(context, ACTION_FOR_INTENT_CALLBACK, ingredients, onlineRecipeID);
+                        onlineDbHelper.insertSteps(context, ACTION_FOR_INTENT_CALLBACK, steps, onlineRecipeID);
+                        requiredUploads = 2;
+                        if (!coverImagePath.equals("N/A")) {
+                            requiredUploads++;
+                            onlineDbHelper.uploadImage(context, ACTION_FOR_INTENT_CALLBACK, coverImagePath, onlineRecipeID);
+                        }
+                    } else {
+
+                        Log.d("RRROBIN ERROR", " something went wrong with the recipe upload to online DB");
                     }
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
+                    Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
+                    requiredUploads--;
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_STEPS)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_STEPS");
+                    requiredUploads--;
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_INGREDIENTS)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_INGREDIENTS");
+                    requiredUploads--;
+                } else {
+                    //TODO
+                    Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
                 }
-                else{
-
-                    Log.d("RRROBIN ERROR", " something went wrong with the recipe upload to online DB");
-                }
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)){
-                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
-                Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
-                requiredUploads--;
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_STEPS)){
-                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_STEPS");
-                requiredUploads--;
-            }
-            else if(returnType.equals(OnlineDbAdapter.RETURNTYPE_INSERT_INGREDIENTS)){
-                Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_INSERT_INGREDIENTS");
-                requiredUploads--;
             }
             else{
                 //TODO
-                Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
+                Log.d("RRROBIN ERROR", "  no success " );
             }
 
             if(requiredUploads==0){

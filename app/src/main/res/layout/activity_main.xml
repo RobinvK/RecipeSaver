@@ -28,9 +28,27 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Go to add recipe page"
-            android:id="@+id/button"
+            android:id="@+id/btnViewRecipes"
             android:layout_gravity="center_horizontal"
-            android:onClick="clickedSecondActivityButton"
+            android:onClick="clickedViewRecipesButton"
+            />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Go to log in page"
+            android:id="@+id/btnLogin"
+            android:layout_gravity="center_horizontal"
+            android:onClick="clickedLoginButton"
+            />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Go to sign up page"
+            android:id="@+id/btnSignup"
+            android:layout_gravity="center_horizontal"
+            android:onClick="clickedSignupButton"
             />
     </LinearLayout>
 
