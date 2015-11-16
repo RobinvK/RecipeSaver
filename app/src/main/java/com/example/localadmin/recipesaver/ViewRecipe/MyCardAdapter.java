@@ -19,13 +19,14 @@ import java.util.List;
 
 /**
  * Created on 7-7-2015.
- * Last changed on 4-8-2015
- * Current version: V 1.06
+ *
+ * Current version: V 1.07
  *
  * changes:
+ * V1.07 - 29-10-2015: Store Recipe ID in card, add it to openDetails function
  * V1.06 - 4-8-2015: improved Picasso implementation
  * V1.05 - 3-8-2015:  addition of steps for CardViewHolder, steps and ingredients are now String instead of textview
- * V1.04 - 29-7-2015: Changes to support VierRecipeListActivity V1.05
+ * V1.04 - 29-7-2015: Changes to support ViewRecipeListActivity V1.05
  * V1.03 - 28-7-2015: improved Picasso implementation
  * V1.02 - 24-7-2015: improved Picasso implementation
  * V1.01 - 23-7-2015: implementation of Picasso
@@ -59,6 +60,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         viewHolder.ingredients =recipeDataCard.getIngredients();
         viewHolder.steps =recipeDataCard.getSteps();
         viewHolder.imagePath = recipeDataCard.getImagePath();
+        viewHolder.recipeID = recipeDataCard.getIndex();
         //viewHolder.image.setImageBitmap(BitmapFactory.decodeFile(recipeDataCard.getImagePath()));
         // Picasso.with(viewHolder.image.getContext()).setIndicatorsEnabled(true);
 
@@ -109,7 +111,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         if (mContext instanceof ViewRecipeListActivity) {
             ViewRecipeListActivity activity = (ViewRecipeListActivity) mContext;
             if(i==0 && activity.recipesSelectionType==activity.NEWEST_FROM_ADDRECIPE) {
-                activity.openDetails(viewHolder.image, viewHolder.imagePath, viewHolder.title, viewHolder.ingredients, viewHolder.steps);
+                activity.openDetails(viewHolder.image, viewHolder.imagePath, viewHolder.title, viewHolder.ingredients, viewHolder.steps, viewHolder.recipeID);
             }
         }
     }
@@ -142,12 +144,13 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         public String[] ingredients;
         public String imagePath;
         public String[] steps;
+        public long recipeID=-1;
 
         public CardViewHolder(View itemView) {
             super(itemView);
-            Log.d("RRROBIN APP", "MyCardAdapter CardViewHolder");
             image = (ImageView) itemView.findViewById(R.id.recipe_card_closed_image);
-            title = (TextView) itemView.findViewById(R.id.recipe_card_closed_title);
+            title = (TextView) itemView.findViewById(R.id.recipe_card_closed_title);;
+            Log.d("RRROBIN APP", "MyCardAdapter CardViewHolder , title =" + title.getText());
             image.setOnClickListener(this);
         }
 
@@ -155,7 +158,7 @@ public class MyCardAdapter extends RecyclerView.Adapter<MyCardAdapter.CardViewHo
         public void onClick(View view) {
             if (view.getContext() instanceof ViewRecipeListActivity) {
                 ViewRecipeListActivity activity = (ViewRecipeListActivity) view.getContext();
-                activity.openDetails(view, imagePath, title, ingredients, steps);
+                activity.openDetails(view, imagePath, title, ingredients, steps,recipeID);
             }
         }
     }

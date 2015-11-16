@@ -16,6 +16,10 @@
             android:icon="@drawable/ic_star_black"
             android:title="@string/title_activity_log_in" />
         <item
+            android:id="@+id/drawer_activity_log_out"
+            android:icon="@drawable/ic_star_black"
+            android:title="@string/title_activity_log_out" />
+        <item
             android:id="@+id/drawer_activity_sign_up"
             android:icon="@drawable/ic_star_black"
             android:title="@string/title_activity_sign_up" />

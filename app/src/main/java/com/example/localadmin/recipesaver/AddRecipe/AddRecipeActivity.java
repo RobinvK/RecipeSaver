@@ -52,10 +52,10 @@ import java.util.Random;
 /**
  * Created on 22-6-2015.
  *
- * Last changed on 14-10-2015
- * Current version: V 1.09
+ * Current version: V 1.10
  *
  * changes:
+ * V1.10 - 29-10-2015: Recipe owner now stored (as UserID)
  * V1.09 - 14-10-2015: Broadcast onReceive now checks if the php code returned a successful query
  * V1.08 - 4-8-2015: General optimization and picasso bugfix due to orientation change. Removal of onRestoreInstanceState function
  * V1.07 - 4-8-2015: ability to add pictures to steps
@@ -79,7 +79,6 @@ public class AddRecipeActivity extends AppCompatActivity {
     ArrayList<DataObject> ingredientData = null;
     ArrayList<DataObject> stepData = null;
 
-    private static final String DEFAULT_PREFERENCE_VALUE = "N/A";
     private static final int PICK_COVER_IMAGE_REQUEST = 1;
     private static final int PICK_STEP_IMAGE_REQUEST = 2;
     private String selectedImagePath = "N/A";
@@ -99,7 +98,7 @@ public class AddRecipeActivity extends AppCompatActivity {
     private OnlineDbAdapter onlineDbHelper;
     private boolean isOnline = true;
 
-    private String userName = "";
+    private int userID;
 
     private static final String ACTION_FOR_INTENT_CALLBACK = "AddRecipeActivity_Callback_Key";
 
@@ -112,7 +111,7 @@ public class AddRecipeActivity extends AppCompatActivity {
 
 
         SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
-        userName = sharedPreferences.getString("UserName",DEFAULT_PREFERENCE_VALUE);
+        userID = sharedPreferences.getInt("UserID", -1);
 
         if (isOnline) {
             onlineDbHelper = new OnlineDbAdapter();
@@ -272,8 +271,8 @@ public class AddRecipeActivity extends AppCompatActivity {
         }
         //offline
         long recipeID;
-        if(!userName.equals(DEFAULT_PREFERENCE_VALUE)) {
-            recipeID = dbHelper.insertRecipe(title,"",userName);
+        if(userID!=-1) {
+            recipeID = dbHelper.insertRecipe(title,"",userID);
         }
         else{
             recipeID = dbHelper.insertRecipe(title);
@@ -362,8 +361,8 @@ public class AddRecipeActivity extends AppCompatActivity {
 
             if (isOnline) {
                 requiredUploads = 1;
-                if(!userName.equals(DEFAULT_PREFERENCE_VALUE)) {
-                    onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title, "", userName);
+                if(userID!=-1) {
+                    onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title, "", userID);
                 }
                 else{
                     onlineDbHelper.insertRecipe(this, ACTION_FOR_INTENT_CALLBACK, title);
