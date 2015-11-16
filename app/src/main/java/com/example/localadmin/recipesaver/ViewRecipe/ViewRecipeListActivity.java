@@ -3,10 +3,11 @@ package com.example.localadmin.recipesaver.ViewRecipe;
 /**
  * Created on 22-6-2015.
  *
- * Last changed on 14-10-2015
- * Current version: V 1.10
+ * Current version: V 1.12
  *
  * changes:
+ * V1.12 - 15-11-2015: Completed user rating system 
+ * V1.11 - 29-10-2015: Implemented rating system
  * V1.10 - 14-10-2015: Broadcast onReceive now checks if the php code returned a successful query
  * V1.09 - 6-9-2015: pDialog moved from OnlineDbAdapter to ViewRecipeListActivity, MyCardAdapter closes the dialog once picasso is done loading an image
  * V1.08 - 4-8-2015: improved Picasso implementation
@@ -33,8 +34,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -44,8 +49,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RatingBar;
 import android.widget.TextView;
+import android.widget.RatingBar.OnRatingBarChangeListener;
+import android.widget.Toast;
 
 import com.example.localadmin.recipesaver.DbAdapter;
 import com.example.localadmin.recipesaver.OnlineDbAdapter;
@@ -80,10 +89,14 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
     private boolean isOnline = true;
 
+    private SharedPreferences sharedPreferences;
+
     private ProgressDialog pDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
 
         Log.d("RRROBIN APP", "ViewRecipeListActivity onCreate");
         setContentView(R.layout.activity_view_recipe_list);
@@ -130,72 +143,6 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         }
     }
 
-    private BroadcastReceiver receiver = new BroadcastReceiver()
-    {
-        @Override
-        public void onReceive(Context context, Intent intent)
-        {
-            Log.d("RRROBIN APP", " BroadcastReceiver onReceive");
-            String response = intent.getStringExtra(OnlineDbAdapter.DB_RESPONSE);
-            String returnType = intent.getStringExtra(OnlineDbAdapter.DB_RETURNTYPE);
-            int success = intent.getIntExtra(OnlineDbAdapter.DB_SUCCESS, 0);
-
-            if(success==1) {
-                if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_NUMBER_OF_RECIPES)) {
-                    numberOfRecipes = onlineDbHelper.getNumberOfRecipes(response);
-                    Log.d("RRROBIN RECIPEDATA", " online numberOfRecipes = " + numberOfRecipes);
-                    createRecipeSelection();
-                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RECIPE_DATA)) {
-                    int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
-                    Log.d("RRROBIN RECIPEDATA", " online recipe data dbIndex =: " + dbIndex);
-
-
-                    if (dbIndex >= 0) {
-                        Log.d("RRROBIN RECIPEDATA", " added name =: " + onlineDbHelper.getRecipeName(response));
-                        RecipeDataCard recipeCard = new RecipeDataCard();
-                        recipeCard.setIndex(dbIndex);
-                        recipeCard.setName(onlineDbHelper.getRecipeName(response));
-                        recipeCard.setIngredients(onlineDbHelper.getRecipeIngredients(response));
-                        recipeCard.setSteps(onlineDbHelper.getRecipeSteps(response));
-                        recipeCard.setImagePath(onlineDbHelper.getRecipeImagePath(response));
-                        recipeCard.setOnline(true);
-                        mAdapter.addItem(recipeCard);
-                    }
-
-                    Log.d("RRROBIN RECIPEDATA", " mAdapter.mItems.size() = " + mAdapter.mItems.size());
-                    if (mAdapter.mItems.size() == numberOfRecipes) {
-                        Log.d("RRROBIN RECIPEDATA", " added enough cards");
-                        mRecyclerView.setAdapter(mAdapter);
-
-                        setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
-                    }
-              /*  ArrayList<HashMap<String, String>> recipesList = onlineDbHelper.getAllRecipesData(response);
-                StringBuilder stringBuilder = new StringBuilder();
-                for (int i = 0; i < recipesList.size(); i++) {
-                    stringBuilder.append("id ").append(recipesList.get(i).get(onlineDbHelper.TAG_ID)).append(" has name '").append(recipesList.get(i).get(onlineDbHelper.TAG_NAME)).append("', ");
-                }
-
-                Log.d("RRROBIN RECIPEDATA", " online recipe data: "+stringBuilder.toString());
-                */
-                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)) {
-                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
-                    Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
-
-                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_LAST_RECIPES)) {
-                    resortRecipeSelection(onlineDbHelper.getLastRecipes(response));
-
-                } else {
-                    //TODO
-                    Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
-                }
-            }
-            else{
-                //TODO
-                Log.d("RRROBIN ERROR", "  no success " );
-            }
-
-        }
-    };
 
     private void createRecipeSelection() {
         if (numberOfRecipes == 0) {//set opened recipe card view to invisible
@@ -293,6 +240,7 @@ public class ViewRecipeListActivity extends AppCompatActivity {
 
     }
 
+
     //------------------EVENT LISTENERS----------------
 
     public interface ScrollViewListener {
@@ -359,11 +307,173 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         }
     }
 
-    public void openDetails(View coverView, String recipeImagePath, TextView recipeTitle, String[] recipeIngredients, String[] recipeSteps) {
+
+    //------------------BROADCAST RECEIVER------------------
+
+    private BroadcastReceiver receiver = new BroadcastReceiver()
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            Log.d("RRROBIN APP", " BroadcastReceiver onReceive");
+            String response = intent.getStringExtra(OnlineDbAdapter.DB_RESPONSE);
+            String returnType = intent.getStringExtra(OnlineDbAdapter.DB_RETURNTYPE);
+            int success = intent.getIntExtra(OnlineDbAdapter.DB_SUCCESS, 0);
+
+            if(success==1) {
+                if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_NUMBER_OF_RECIPES)) {
+                    numberOfRecipes = onlineDbHelper.getNumberOfRecipes(response);
+                    Log.d("RRROBIN RECIPEDATA", " online numberOfRecipes = " + numberOfRecipes);
+                    createRecipeSelection();
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RECIPE_DATA)) {
+                    int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
+                    Log.d("RRROBIN RECIPEDATA", " online recipe data dbIndex =: " + dbIndex);
+
+
+                    if (dbIndex > 0) {
+                        Log.d("RRROBIN RECIPEDATA", " added name =: " + onlineDbHelper.getRecipeName(response));
+                        RecipeDataCard recipeCard = new RecipeDataCard();
+                        recipeCard.setIndex(dbIndex);
+                        recipeCard.setName(onlineDbHelper.getRecipeName(response));
+                        recipeCard.setIngredients(onlineDbHelper.getRecipeIngredients(response));
+                        recipeCard.setSteps(onlineDbHelper.getRecipeSteps(response));
+                        recipeCard.setImagePath(onlineDbHelper.getRecipeImagePath(response));
+                        recipeCard.setOnline(true);
+                        mAdapter.addItem(recipeCard);
+                    }
+
+                    Log.d("RRROBIN RECIPEDATA", " mAdapter.mItems.size() = " + mAdapter.mItems.size());
+                    if (mAdapter.mItems.size() == numberOfRecipes) {
+                        Log.d("RRROBIN RECIPEDATA", " added enough cards");
+                        mRecyclerView.setAdapter(mAdapter);
+
+                        setUpUnfoldableView();//set up variables for unfolding animation and set up the view for the full recipe view
+                    }
+              /*  ArrayList<HashMap<String, String>> recipesList = onlineDbHelper.getAllRecipesData(response);
+                StringBuilder stringBuilder = new StringBuilder();
+                for (int i = 0; i < recipesList.size(); i++) {
+                    stringBuilder.append("id ").append(recipesList.get(i).get(onlineDbHelper.TAG_ID)).append(" has name '").append(recipesList.get(i).get(onlineDbHelper.TAG_NAME)).append("', ");
+                }
+
+                Log.d("RRROBIN RECIPEDATA", " online recipe data: "+stringBuilder.toString());
+                */
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_UPLOAD_IMAGE)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_UPLOAD_IMAGE");
+                    Log.d("RRROBIN RECIPEDATA", " uploaded image path = " + onlineDbHelper.getUploadImagePath(response));
+
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_LAST_RECIPES)) {
+                    resortRecipeSelection(onlineDbHelper.getLastRecipes(response));
+
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GIVE_RATING)) {
+                    Log.d("RRROBIN RECIPEDATA", " rating given!");
+
+                    //TODO
+                    int dbIndex = intent.getIntExtra(OnlineDbAdapter.ADDITIONAL_RETURN_VARIABLE, -1);
+                    updateAverageRating(dbIndex);
+                    Toast.makeText(getApplicationContext(), "Rating submitted!", Toast.LENGTH_SHORT).show();
+
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_RATING)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_GET_RATING");
+                    float theRating = onlineDbHelper.getRecipeRating(response);
+                    RatingBar ratingBar = (RatingBar) findViewById(R.id.averageRatingBar);
+                    if(theRating!=-1) {
+                        ratingBar.setRating(theRating);
+                    }
+                    else{
+                        //TODO: no rating has yet been given
+                        Log.d("RRROBIN RECIPEDATA", " no rating has yet been given ");
+                        ratingBar.setRating(0);
+
+                    }
+
+                    LayerDrawable stars = (LayerDrawable) ratingBar
+                            .getProgressDrawable();
+                    stars.getDrawable(2).setColorFilter(getResources().getColor(R.color.accent),
+                            PorterDuff.Mode.SRC_ATOP); // for filled stars
+                    stars.getDrawable(1).setColorFilter(getResources().getColor(R.color.divider),
+                            PorterDuff.Mode.SRC_ATOP); // for empty stars
+                    stars.getDrawable(0).setColorFilter(getResources().getColor(R.color.divider),
+                            PorterDuff.Mode.SRC_ATOP); // for empty stars
+                } else if (returnType.equals(OnlineDbAdapter.RETURNTYPE_GET_USERS_RATING)) {
+                    Log.d("RRROBIN RECIPEDATA", " RETURNTYPE_GET_USERS_RATING");
+                    float theRating = onlineDbHelper.getRecipeRating(response);
+                    RatingBar ratingBar = (RatingBar) findViewById(R.id.ratingBar);
+                    ratingBar.setRating(theRating);
+
+                    if(theRating!=-1) {
+                        ratingBar.setRating(theRating);
+                    }
+                    else{
+                        //TODO: no rating has yet been given by this user
+                        Log.d("RRROBIN RECIPEDATA", " no rating has yet been given by this user");
+                        ratingBar.setRating(0);
+
+                    }
+                    LayerDrawable stars = (LayerDrawable) ratingBar
+                            .getProgressDrawable();
+                    stars.getDrawable(2).setColorFilter(getResources().getColor(R.color.accent),
+                            PorterDuff.Mode.SRC_ATOP); // for filled stars
+                    stars.getDrawable(1).setColorFilter(getResources().getColor(R.color.divider),
+                            PorterDuff.Mode.SRC_ATOP); // for empty stars
+                    stars.getDrawable(0).setColorFilter(getResources().getColor(R.color.divider),
+                            PorterDuff.Mode.SRC_ATOP); // for empty stars
+                }
+                else
+                {
+                    //TODO
+                    Log.d("RRROBIN ERROR", "  returnType not recognised: " + returnType);
+                }
+            }
+            else{
+                //TODO
+                Log.d("RRROBIN ERROR", "  no success " );
+            }
+
+        }
+    };
+    @Override //for BroadcastReceiver
+    public void onResume() {
+        super.onResume();
+        this.registerReceiver(receiver, new IntentFilter(ACTION_FOR_INTENT_CALLBACK));
+    }
+
+    @Override //for BroadcastReceiver
+    public void onPause()
+    {
+        super.onPause();
+        this.unregisterReceiver(receiver);
+    }
+
+    //------------------SINGLE RECIPE OPENED----------------
+
+    public void updateAverageRating(long recipeID) {
+        Log.d("RRROBIN RECIPEDATA", " updateAverageRating recipeID = " + recipeID + ".");
+        onlineDbHelper.prepareRecipeRating(this, ACTION_FOR_INTENT_CALLBACK, recipeID);
+    }
+
+    public void updateDisplayedUserRating(long recipeID) {
+        Boolean loggedIn = sharedPreferences.getBoolean("LoggedIn", false);
+        int userID = sharedPreferences.getInt("UserID",-1);
+        Log.d("RRROBIN RECIPEDATA", " updateAverageRating recipeID = " + recipeID + " & userID = " + userID);
+        if(loggedIn==true) {
+            if (userID > 0) {
+                onlineDbHelper.prepareUsersRecipeRating(this, ACTION_FOR_INTENT_CALLBACK, recipeID, userID);
+            }
+        }
+        else{
+            Log.d("RRROBIN WARNING", " user is not logged in");
+        }
+    }
+
+    public void openDetails(View coverView, String recipeImagePath, TextView recipeTitle, String[] recipeIngredients, String[] recipeSteps, long recipeID) {
+        Log.d("RRROBIN RECIPEDATA", "ViewRecipeListActivity openDetails , title =" + recipeTitle.getText()+ ", recipeID =" + recipeID);
         final ImageView image = (ImageView) findViewById(R.id.details_image);
         final TextView title = (TextView) findViewById(R.id.details_title);
         TextView ingredients = (TextView) findViewById(R.id.ingredients_text);
         TextView steps = (TextView) findViewById(R.id.steps_text);
+        Button ratingSubmitButton = (Button) findViewById(R.id.btnSubmitRating);
+
+        ratingSubmitButton.setTag(recipeID);
 
         Log.d("RRROBIN RECIPEDATA", " openDetails Picasso recipeImagePath = "+recipeImagePath+".");
         if(recipeImagePath!=null && !recipeImagePath.equals("")) {//TODO: is !TextUtils.isEmpty(recipeImagePath) better?
@@ -416,21 +526,35 @@ public class ViewRecipeListActivity extends AppCompatActivity {
         }
         steps.setText(builder.toString());
 
+        //TODO: standard text should say 'no rating given' if no rating has yet been given
+        updateAverageRating(recipeID);
+
+        updateDisplayedUserRating(recipeID);
+
         mUnfoldableView.unfold(coverView, mDetailsLayout);
     }
-    @Override //for BroadcastReceiver
-    public void onResume() {
-        super.onResume();
-        this.registerReceiver(receiver, new IntentFilter(ACTION_FOR_INTENT_CALLBACK));
-    }
 
-    @Override //for BroadcastReceiver
-    public void onPause()
-    {
-        super.onPause();
-        this.unregisterReceiver(receiver);
-    }
+    public void giveRating(View view) {
+        Boolean loggedIn = sharedPreferences.getBoolean("LoggedIn", false);
+        int userID = sharedPreferences.getInt("UserID",-1);
+        if(loggedIn==true){
+            if(userID>0){
+                RatingBar ratingBar = (RatingBar) findViewById(R.id.ratingBar);
+                int rating = Math.round((ratingBar.getRating()*10));
+                int recipeID = Integer.parseInt(view.getTag().toString());
+                Log.d("RRROBIN RECIPEDATA", " ViewRecipeListActivity giveRating. rating = "+ rating +", recipeID = "+ recipeID+", userID = "+ userID);
 
+                onlineDbHelper.giveRating(this, ACTION_FOR_INTENT_CALLBACK, rating, recipeID, userID);
+
+            }
+            else{
+                Log.d("RRROBIN ERROR", " ViewRecipeListActivity giveRating userID is incorrect = "+ userID);
+            }
+        }
+        else{
+            Log.d("RRROBIN ERROR", " ViewRecipeListActivity giveRating user is not logged in");
+        }
+    }
     //------------------NOT YET IMPLEMENTED----------------
 
     @Override

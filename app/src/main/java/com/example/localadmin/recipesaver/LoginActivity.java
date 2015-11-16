@@ -15,10 +15,11 @@ import android.widget.Toast;
 /**
  * Created on 7-9-2015
  *
- * Last changed on 23-10-2015
- * Current version: V 1.02
+ *
+ * Current version: V 1.03
  *
  * changes:
+ * V1.03 - 29-10-2015: Store user ID on login
  * V1.02 - 23-10-2015: LoginActivity fully implemented + layout overhaul
  * V1.01 - 14-10-2015: Broadcast onReceive implemented
  * V1.00 - 7-9-2015: creation of username, password, email fields and signup/login buttons
@@ -66,7 +67,9 @@ public class LoginActivity extends Activity {
 
             if(returnType.equals(OnlineDbAdapter.RETURNTYPE_LOG_IN)){
                 if(success!=0){
-                    setAppUserName(usernameText);
+                    usernameText = onlineDbHelper.getUserName(response);
+                    int userID = onlineDbHelper.getUserID(response);
+                    setAppUserName(usernameText,userID);
                 }
                 else {
                     Boolean userExists = onlineDbHelper.doesUserExist(response);
@@ -106,10 +109,11 @@ public class LoginActivity extends Activity {
     }
     //------------------NOT YET IMPLEMENTED----------------
 
-    private void setAppUserName(String userName){
+    private void setAppUserName(String userName, int userID){
         SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString("UserName", userName);
+        editor.putInt("UserID", userID);
         editor.putBoolean("LoggedIn", true);
         editor.apply();
 

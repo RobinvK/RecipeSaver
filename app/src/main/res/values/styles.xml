@@ -12,4 +12,9 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <style name="recipeRatingBar" parent="@android:style/Widget.RatingBar">
+        <item name="android:progressDrawable">@drawable/recipe_ratingbar_drawable</item>
+        <item name="android:minHeight">48dip</item>
+        <item name="android:maxHeight">48dip</item>
+    </style>
 </resources>

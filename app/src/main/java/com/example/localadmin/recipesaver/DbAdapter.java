@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Created on 23-6-2015.
- * Last changed on 3-8-2015
+ *
  * Current version: V 1.01
  *
  * changes:
@@ -37,14 +37,14 @@ public class DbAdapter {
     }
 
     //INSERT
-    public long insertRecipe(String name, String description, String owner){
+    public long insertRecipe(String name, String description, int owner){
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put(DbHelper.RECIPE_NAME, name);
         if(!description.equals("")){
             contentValues.put(DbHelper.RECIPE_DESCRIPTION, description);
         }
-        if(!owner.equals("") || !owner.equals("N/A")){
+        if(owner!=-1){
             contentValues.put(DbHelper.RECIPE_OWNER, owner);
         }
         long insertPos = db.insert(DbHelper.RECIPE_TABLE_NAME, null, contentValues);

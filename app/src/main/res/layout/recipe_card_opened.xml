@@ -43,6 +43,20 @@
                 android:background="#ffffff"
                 android:orientation="vertical">
 
+
+                <RatingBar
+                    android:id="@+id/averageRatingBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    style="@style/recipeRatingBar"
+                    android:numStars="5"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginLeft="22dp"
+                    android:isIndicator="true"
+                    android:max="5"
+                    android:stepSize="0.5"
+                    android:rating="5.0" />
+
                 <TextView
                     android:id="@+id/ingredients_title"
                     android:layout_width="match_parent"
@@ -92,6 +106,26 @@
                     android:textSize="14sp"
                     android:textColor="#444"
                     android:lineSpacingExtra="4sp" />
+                <RatingBar
+                    android:id="@+id/ratingBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    style="@style/recipeRatingBar"
+                    android:numStars="5"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginLeft="30dp"
+                    android:max="5"
+                    android:stepSize="0.5"
+                    android:rating="5.0" />
+                <Button
+                    android:id="@+id/btnSubmitRating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="20dp"
+                    android:text="Rate!"
+                    android:onClick="giveRating"
+                    android:tag="-1"/>
+
 
             </LinearLayout>
         </LinearLayout>

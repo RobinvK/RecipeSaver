@@ -3,7 +3,8 @@ package com.example.localadmin.recipesaver;
 /**
  * APP VERSION HISTORY
  *
- * Current version: V APP_1.05
+ * Current version: V APP_1.06
+ * V APP_1.06  - 16-11-2015: Full implementation of Rating system. Users can rate and edit their rating. Every recipe has an average rating.
  * V APP_1.05  - 26-10-2015: Full implementation of Login and Signup options, including dedicated activities and online functionalities.
  * V APP_1.04  - 14-9-2015: Addition of login and sign up options in drawer menu
  * V APP_1.03 stable - 6-9-2015: Recipes are stored online and stored recipes can be read back. (including images)
@@ -13,12 +14,14 @@ package com.example.localadmin.recipesaver;
  * AddRecipeActivity: add a title, an image from camera or gallery, steps and ingredients to your ingredient and save it
  * ViewRecipeListActivity: lists your recipes. Opens up a single recipe when one is selected from the recipe list.
  *
+ *
+ * TODO: auto log out?
  */
 
 
 /**
  * Created on 22-6-2015.
- * Last changed on 23-10-2015
+ *
  * Current version: V 1.01
  *
  * changes:
@@ -103,11 +106,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if(userLoggedIn){
             mDrawer.getMenu().findItem(R.id.drawer_activity_log_in).setVisible(false);
-            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(true);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_log_out).setVisible(true);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(false);
         }
         else{
             mDrawer.getMenu().findItem(R.id.drawer_activity_log_in).setVisible(true);
-            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(false);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_log_out).setVisible(false);
+            mDrawer.getMenu().findItem(R.id.drawer_activity_sign_up).setVisible(true);
         }
 
         if(!didUserSeeDrawer()){
@@ -215,6 +220,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 mDrawerLayout.closeDrawer(GravityCompat.START);
                 intent = new Intent(this, LoginActivity.class);
                 startActivity(intent);
+            }else if (mSelectedId == R.id.drawer_activity_log_out) {
+                //TODO: log out online
+                mDrawerLayout.closeDrawer(GravityCompat.START);
+                SharedPreferences sharedPreferences = getSharedPreferences("MyData", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString("UserName", DEFAULT_PREFERENCE_VALUE);
+                editor.putBoolean("LoggedIn", false);
+                editor.apply();
+
+                TextView welcomeField = (TextView)findViewById(R.id.header_username);
+                welcomeField.setText("Welcome!");
+                userLoggedIn=false;
             }
             else if (mSelectedId == R.id.drawer_activity_sign_up) {
                 mDrawerLayout.closeDrawer(GravityCompat.START);
